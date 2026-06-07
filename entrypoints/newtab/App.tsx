@@ -3,8 +3,11 @@ import { DateHeader } from './components/DateHeader';
 import { Checklist } from './components/Checklist';
 import { Agenda } from './components/Agenda';
 import { ThemeToggle } from './components/ThemeToggle';
+import { SyncStatus } from './components/SyncStatus';
+import { ConnectButton } from './components/ConnectButton';
 import { useDay } from './lib/useDay';
 import { useTheme } from './lib/theme';
+import { useDateShortcuts } from './lib/useDateShortcuts';
 import { todayKey } from './lib/date';
 import { AGENDA_END_HOUR, AGENDA_START_HOUR } from './lib/types';
 
@@ -12,14 +15,15 @@ import { AGENDA_END_HOUR, AGENDA_START_HOUR } from './lib/types';
 function currentAgendaHour(date: string): number | null {
   if (date !== todayKey()) return null;
   const h = new Date().getHours();
-  const mapped = h <= 2 ? h + 24 : h;
+  const mapped = h <= AGENDA_END_HOUR - 24 ? h + 24 : h;
   return mapped >= AGENDA_START_HOUR && mapped <= AGENDA_END_HOUR ? mapped : null;
 }
 
 function App() {
   const [date, setDate] = useState<string>(() => todayKey());
-  const { entry, update } = useDay(date);
+  const { entry, update, online } = useDay(date);
   const { theme, setTheme } = useTheme();
+  useDateShortcuts(setDate);
 
   return (
     <div className="flex min-h-full justify-center px-4 py-10">
@@ -36,6 +40,10 @@ function App() {
         </div>
       </main>
 
+      <div className="fixed bottom-4 left-4 z-10 flex items-center gap-2">
+        <SyncStatus online={online} />
+        <ConnectButton />
+      </div>
       <ThemeToggle theme={theme} setTheme={setTheme} />
     </div>
   );

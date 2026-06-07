@@ -1,4 +1,4 @@
-import { addDays, dayOfWeek, formatLongDate, todayKey, WEEKDAY_LETTERS } from '../lib/date';
+import { addDays, dayOfWeek, formatLongDate, todayKey, WEEKDAY_LETTERS, WEEKDAY_NAMES } from '../lib/date';
 
 interface Props {
   date: string;
@@ -18,6 +18,8 @@ export function DateHeader({ date, onDateChange }: Props) {
           <button
             type="button"
             aria-label="Previous day"
+            aria-keyshortcuts="ArrowLeft Shift+ArrowLeft"
+            title="Previous day (←) — previous week (Shift+←)"
             onClick={() => onDateChange(addDays(date, -1))}
             className="pb-1 text-xl leading-none text-stone-300 transition-colors hover:text-stone-600 dark:text-stone-600 dark:hover:text-stone-300"
           >
@@ -38,6 +40,8 @@ export function DateHeader({ date, onDateChange }: Props) {
           <button
             type="button"
             aria-label="Next day"
+            aria-keyshortcuts="ArrowRight Shift+ArrowRight"
+            title="Next day (→) — next week (Shift+→)"
             onClick={() => onDateChange(addDays(date, 1))}
             className="pb-1 text-xl leading-none text-stone-300 transition-colors hover:text-stone-600 dark:text-stone-600 dark:hover:text-stone-300"
           >
@@ -46,6 +50,8 @@ export function DateHeader({ date, onDateChange }: Props) {
           {!isToday && (
             <button
               type="button"
+              aria-keyshortcuts="t"
+              title="Jump to today (t)"
               onClick={() => onDateChange(today)}
               className="mb-1 ml-1 rounded-full border border-stone-300 px-2.5 py-0.5 text-[11px] font-medium text-stone-500 transition-colors hover:border-stone-500 hover:text-stone-800 dark:border-stone-600 dark:text-stone-400 dark:hover:border-stone-400 dark:hover:text-stone-100"
             >
@@ -61,16 +67,21 @@ export function DateHeader({ date, onDateChange }: Props) {
           </span>
           <span className="text-stone-300 dark:text-stone-600">(</span>
           {WEEKDAY_LETTERS.map((letter, i) => (
-            <span
+            <button
               key={i}
+              type="button"
+              aria-label={`Go to ${WEEKDAY_NAMES[i]} this week`}
+              aria-pressed={i === activeDow}
+              title={`Go to ${WEEKDAY_NAMES[i]} this week`}
+              onClick={() => onDateChange(addDays(date, i - activeDow))}
               className={
                 i === activeDow
-                  ? 'flex h-6 w-6 items-center justify-center rounded-full border-2 border-rose-400 font-semibold text-stone-700 dark:border-rose-400 dark:text-stone-100'
-                  : 'flex h-6 w-6 items-center justify-center'
+                  ? 'flex h-6 w-6 items-center justify-center rounded-full border-2 border-rose-400 font-semibold text-stone-700 transition-colors dark:border-rose-400 dark:text-stone-100'
+                  : 'flex h-6 w-6 items-center justify-center rounded-full transition-colors hover:bg-stone-100 hover:text-stone-700 dark:hover:bg-stone-800 dark:hover:text-stone-200'
               }
             >
               {letter}
-            </span>
+            </button>
           ))}
           <span className="text-stone-300 dark:text-stone-600">)</span>
         </div>
