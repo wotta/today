@@ -12,16 +12,23 @@
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
     "compile": "tsc --noEmit",
+    "server": "bun run server/index.ts",
+    "server:compile": "tsc -p server/tsconfig.json",
     "postinstall": "wxt prepare"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "dexie": "^4.4.3",
     "dexie-react-hooks": "^4.4.0",
+    "express": "^5.2.1",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.0",
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.9.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@wxt-dev/module-react": "^1.1.5",

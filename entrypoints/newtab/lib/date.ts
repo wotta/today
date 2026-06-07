@@ -1,5 +1,10 @@
 /** Date helpers working in the user's local timezone, keyed by "YYYY-MM-DD". */
 
+import { AGENDA_END_HOUR } from './types';
+
+/** Hours up to here past midnight still belong to the previous day's page (26:00 -> 2am). */
+const LATE_NIGHT_CUTOFF_HOUR = AGENDA_END_HOUR - 24;
+
 /** Local-time ISO date string, e.g. "2026-06-07". Avoids the UTC shift of toISOString(). */
 export function toDateKey(d: Date): string {
   const y = d.getFullYear();
@@ -8,8 +13,17 @@ export function toDateKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+/**
+ * The planner's "today". Because the agenda runs to AGENDA_END_HOUR (26:00 = 2am),
+ * the early hours past midnight still belong to the previous calendar day's page —
+ * e.g. at 00:30 on June 8 the active day is still June 7.
+ */
 export function todayKey(): string {
-  return toDateKey(new Date());
+  const now = new Date();
+  if (now.getHours() <= LATE_NIGHT_CUTOFF_HOUR) {
+    now.setDate(now.getDate() - 1);
+  }
+  return toDateKey(now);
 }
 
 /** Parse a "YYYY-MM-DD" key into a local-midnight Date. */
@@ -31,6 +45,16 @@ export function dayOfWeek(key: string): number {
 }
 
 export const WEEKDAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const;
+
+export const WEEKDAY_NAMES = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+] as const;
 
 /** e.g. "June 7, 2026". */
 export function formatLongDate(key: string): string {
