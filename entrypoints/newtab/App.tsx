@@ -5,6 +5,7 @@ import { Agenda } from './components/Agenda';
 import { ThemeToggle } from './components/ThemeToggle';
 import { SyncStatus } from './components/SyncStatus';
 import { ConnectButton } from './components/ConnectButton';
+import { ImportExport } from './components/ImportExport';
 import { useDay } from './lib/useDay';
 import { useTheme } from './lib/theme';
 import { useDateShortcuts } from './lib/useDateShortcuts';
@@ -43,6 +44,7 @@ function App() {
       <div className="fixed bottom-4 left-4 z-10 flex items-center gap-2">
         <SyncStatus online={online} />
         <ConnectButton />
+        <ImportExport />
       </div>
       <ThemeToggle theme={theme} setTheme={setTheme} />
     </div>
