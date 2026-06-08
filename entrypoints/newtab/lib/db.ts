@@ -80,7 +80,7 @@ export async function importDays(
   try {
     parsed = JSON.parse(text);
   } catch {
-    throw new Error('Invalid file — could not parse JSON.');
+    throw new Error('Invalid file');
   }
 
   if (
@@ -89,7 +89,7 @@ export async function importDays(
     (parsed as ExportEnvelope).version !== 1 ||
     typeof (parsed as ExportEnvelope).days !== 'object'
   ) {
-    throw new Error('Unrecognised format — missing version or days.');
+    throw new Error('Unrecognised format');
   }
 
   const { days } = parsed as ExportEnvelope;
