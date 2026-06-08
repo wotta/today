@@ -14,7 +14,8 @@
     "compile": "tsc --noEmit",
     "server": "bun run server/index.ts",
     "server:compile": "tsc -p server/tsconfig.json",
-    "postinstall": "wxt prepare"
+    "postinstall": "wxt prepare",
+    "server:install": "bash scripts/install-service.sh"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
