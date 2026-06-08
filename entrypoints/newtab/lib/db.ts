@@ -44,3 +44,84 @@ export async function saveDay(entry: DayEntry): Promise<void> {
     await db.days.delete(entry.date);
   }
 }
+
+export interface ExportEnvelope {
+  version: 1;
+  exportedAt: string;
+  days: Record<string, DayEntry>;
+}
+
+export async function exportAll(): Promise<void> {
+  const all = await db.days.toArray();
+  const days: Record<string, DayEntry> = {};
+  for (const entry of all) {
+    days[entry.date] = entry;
+  }
+  const envelope: ExportEnvelope = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    days,
+  };
+  const blob = new Blob([JSON.stringify(envelope, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `today-export-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function importDays(
+  file: File,
+  serverPut?: (entry: DayEntry) => Promise<void>,
+): Promise<{ imported: number; skipped: number }> {
+  const text = await file.text();
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new Error('Invalid file — could not parse JSON.');
+  }
+
+  if (
+    typeof parsed !== 'object' ||
+    parsed === null ||
+    (parsed as ExportEnvelope).version !== 1 ||
+    typeof (parsed as ExportEnvelope).days !== 'object'
+  ) {
+    throw new Error('Unrecognised format — missing version or days.');
+  }
+
+  const { days } = parsed as ExportEnvelope;
+  let imported = 0;
+  let skipped = 0;
+
+  for (const [date, entry] of Object.entries(days)) {
+    if (
+      typeof entry !== 'object' ||
+      entry === null ||
+      typeof entry.date !== 'string' ||
+      !Array.isArray(entry.checkItems) ||
+      typeof entry.agenda !== 'object'
+    ) {
+      skipped++;
+      continue;
+    }
+    const existing = await db.days.get(date);
+    if (existing) {
+      skipped++;
+      continue;
+    }
+    await db.days.put(entry as DayEntry);
+    if (serverPut) {
+      try {
+        await serverPut(entry as DayEntry);
+      } catch {
+        // Server push is best-effort; data is safe in IndexedDB.
+      }
+    }
+    imported++;
+  }
+
+  return { imported, skipped };
+}
