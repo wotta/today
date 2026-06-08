@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { exportAll, importDays } from '../lib/db';
 import { putDay } from '../lib/api';
 
@@ -9,6 +9,8 @@ export function ImportExport() {
   const [status, setStatus] = useState<Status>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+
   const flash = (ok: boolean, message: string) => {
     if (timerRef.current) clearTimeout(timerRef.current);
     setStatus({ ok, message });
@@ -18,6 +20,7 @@ export function ImportExport() {
   const handleExport = async () => {
     try {
       await exportAll();
+      flash(true, 'Exported');
     } catch {
       flash(false, 'Export failed');
     }
