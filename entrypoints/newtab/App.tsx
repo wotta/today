@@ -28,7 +28,7 @@ function App() {
   return (
     <div className="flex min-h-full justify-center px-4 py-10">
       {/* Centered notebook page */}
-      <main className="w-full max-w-xl rounded-sm border border-stone-200 bg-[#fcfcfb] px-8 py-8 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-12px_rgba(0,0,0,0.12)] dark:border-stone-700 dark:bg-stone-900 dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_12px_32px_-12px_rgba(0,0,0,0.6)]">
+      <main className="w-full max-w-xl rounded-sm border border-stone-200 bg-[#fcfcfb] px-8 pb-20 pt-8 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-12px_rgba(0,0,0,0.12)] dark:border-stone-700 dark:bg-stone-900 dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_12px_32px_-12px_rgba(0,0,0,0.6)]">
         <DateHeader date={date} onDateChange={setDate} />
         <Checklist items={entry.checkItems} update={update} />
         <div className="mt-8">

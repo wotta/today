@@ -33,7 +33,7 @@ export function DateHeader({ date, onDateChange }: Props) {
             <span className="block text-[10px] font-medium uppercase tracking-[0.2em] text-stone-400 dark:text-stone-500">
               Date
             </span>
-            <span className="block text-2xl font-semibold leading-tight tracking-tight text-stone-800 tabular-nums dark:text-stone-100">
+            <span className="block whitespace-nowrap text-2xl font-semibold leading-tight tracking-tight text-stone-800 tabular-nums dark:text-stone-100">
               {formatLongDate(date)}
             </span>
           </div>
@@ -47,17 +47,16 @@ export function DateHeader({ date, onDateChange }: Props) {
           >
             ›
           </button>
-          {!isToday && (
-            <button
-              type="button"
-              aria-keyshortcuts="t"
-              title="Jump to today (t)"
-              onClick={() => onDateChange(today)}
-              className="mb-1 ml-1 rounded-full border border-stone-300 px-2.5 py-0.5 text-[11px] font-medium text-stone-500 transition-colors hover:border-stone-500 hover:text-stone-800 dark:border-stone-600 dark:text-stone-400 dark:hover:border-stone-400 dark:hover:text-stone-100"
-            >
-              Today
-            </button>
-          )}
+          <button
+            type="button"
+            aria-keyshortcuts="t"
+            title="Jump to today (t)"
+            onClick={() => onDateChange(today)}
+            tabIndex={isToday ? -1 : 0}
+            className={`mb-1 ml-1 rounded-full border border-stone-300 px-2.5 py-0.5 text-[11px] font-medium text-stone-500 transition-colors hover:border-stone-500 hover:text-stone-800 dark:border-stone-600 dark:text-stone-400 dark:hover:border-stone-400 dark:hover:text-stone-100 ${isToday ? 'invisible' : ''}`}
+          >
+            Today
+          </button>
         </div>
 
         {/* Day ( S M T W T F S ) — current day circled */}
