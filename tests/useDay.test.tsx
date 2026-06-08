@@ -19,7 +19,7 @@ const h = vi.hoisted(() => {
 });
 const { fetchDay, putDay, beaconDay, cb } = h;
 
-vi.mock('../entrypoints/newtab/lib/api', () => ({
+vi.mock('../entrypoints/newtab/lib/backend', () => ({
   CLIENT_ID: 'test-client',
   fetchDay: (date: string) => h.fetchDay(date),
   putDay: (entry: DayEntry) => h.putDay(entry),

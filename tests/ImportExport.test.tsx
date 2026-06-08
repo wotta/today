@@ -11,7 +11,7 @@ vi.mock('../entrypoints/newtab/lib/db', () => ({
   exportAll: () => h.exportAll(),
   importDays: () => h.importDays(),
 }));
-vi.mock('../entrypoints/newtab/lib/api', () => ({
+vi.mock('../entrypoints/newtab/lib/backend', () => ({
   putDay: vi.fn(),
 }));
 

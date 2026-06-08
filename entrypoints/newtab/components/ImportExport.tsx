@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { exportAll, importDays } from '../lib/db';
-import { putDay } from '../lib/api';
+import { putDay } from '../lib/backend';
 
 type Status = { ok: boolean; message: string } | null;
 

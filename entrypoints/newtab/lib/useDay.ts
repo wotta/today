@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DayEntry } from './types';
 import { emptyDay, getDay as getCached, saveDay as saveCache } from './db';
-import * as api from './api';
+import * as api from './backend';
 
 const SAVE_DEBOUNCE_MS = 300;
 
