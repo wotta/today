@@ -112,8 +112,24 @@ export function useDay(date: string): UseDay {
           .catch(() => {});
       },
       (isOnline) => {
-        // On reconnect, push what the tab currently shows so visible edits win.
-        if (isOnline && !onlineRef.current) void persist(entryRef.current);
+        if (isOnline && !onlineRef.current) {
+          if (pending.current) {
+            // Unsaved local edits take priority — push them to the server.
+            void persist(entryRef.current);
+          } else {
+            // No local edits: pull from the server so we don't overwrite good data
+            // with stale/empty state (e.g. after Chrome cleared IndexedDB on reload).
+            api
+              .fetchDay(dateRef.current)
+              .then((fresh) => {
+                if (!pending.current) {
+                  setEntry(fresh);
+                  void saveCache(fresh);
+                }
+              })
+              .catch(() => {});
+          }
+        }
         markOnline(isOnline);
       },
     );
