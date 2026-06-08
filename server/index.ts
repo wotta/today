@@ -4,6 +4,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { buildMcpServer } from './mcp';
 import { store, DATA_PATH, type ChangeEvent } from './store';
+import { clearGistConfig, getGistConfig, loadConfig, setGistConfig } from './config';
 import { todayKey } from './date';
 import { DayEntrySchema, DATE_RE } from './types';
 
@@ -12,6 +13,7 @@ const HOST = '127.0.0.1';
 const NAME = 'today';
 const VERSION = '0.1.0';
 
+await loadConfig();
 await store.init();
 
 const app = express();
@@ -46,7 +48,7 @@ app.use('/api', (req, res, next) => {
   if (allowedOrigin(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Today-Client');
     res.setHeader('Access-Control-Max-Age', '86400');
   }
@@ -116,17 +118,39 @@ app.get('/api/health', (_req, res) => {
   res.json({ ok: true, name: NAME, version: VERSION, today: todayKey() });
 });
 
-app.get('/api/days', (_req, res) => {
-  res.json(store.listDays());
+app.get('/api/days', async (_req, res) => {
+  res.json(await store.listDays());
 });
 
-app.get('/api/day/:date', (req, res) => {
+app.get('/api/day/:date', async (req, res) => {
   const { date } = req.params;
   if (!DATE_RE.test(date)) {
     res.status(400).json({ error: 'Date must be YYYY-MM-DD.' });
     return;
   }
-  res.json(store.getDay(date));
+  res.json(await store.getDay(date));
+});
+
+// --- Gist mode: the Options page pushes the PAT + id here so the server uses
+// the same Gist as its store. GET reports status without leaking the PAT. ---
+app.get('/api/gist-config', (_req, res) => {
+  const cfg = getGistConfig();
+  res.json({ enabled: cfg !== null, gistId: cfg?.gistId ?? null });
+});
+
+app.post('/api/gist-config', async (req, res) => {
+  const { pat, gistId } = (req.body ?? {}) as { pat?: unknown; gistId?: unknown };
+  if (typeof pat !== 'string' || typeof gistId !== 'string' || !pat.trim() || !gistId.trim()) {
+    res.status(400).json({ error: 'pat and gistId are required.' });
+    return;
+  }
+  await setGistConfig({ pat, gistId });
+  res.json({ ok: true });
+});
+
+app.delete('/api/gist-config', async (_req, res) => {
+  await clearGistConfig();
+  res.json({ ok: true });
 });
 
 app.put('/api/day/:date', async (req, res) => {

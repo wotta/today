@@ -14,6 +14,11 @@ stats-*.json
 .wxt
 web-ext.config.ts
 
+# Playwright e2e artifacts
+test-results
+playwright-report
+.cache/ms-playwright
+
 # Extension signing key (private key — never commit)
 .dev-key.pem
 

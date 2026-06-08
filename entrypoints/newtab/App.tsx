@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { DateHeader } from './components/DateHeader';
 import { Checklist } from './components/Checklist';
 import { Agenda } from './components/Agenda';
@@ -7,6 +7,7 @@ import { SyncStatus } from './components/SyncStatus';
 import { ConnectButton } from './components/ConnectButton';
 import { ImportExport } from './components/ImportExport';
 import { useDay } from './lib/useDay';
+import { isGistActive } from './lib/backend';
 import { useTheme } from './lib/theme';
 import { useDateShortcuts } from './lib/useDateShortcuts';
 import { todayKey } from './lib/date';
@@ -26,8 +27,20 @@ function App() {
   const { theme, setTheme } = useTheme();
   useDateShortcuts(setDate);
 
+  // Label the sync indicator "Gist" when the GitHub Gist backend is active.
+  const [syncLabel, setSyncLabel] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    let active = true;
+    void isGistActive().then((on) => {
+      if (active) setSyncLabel(on ? 'Gist' : undefined);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
-    <div className="flex min-h-full justify-center px-4 py-10">
+    <div className="flex min-h-full justify-center px-4 pt-10 pb-18">
       {/* Centered notebook page */}
       <main className="w-full max-w-xl rounded-sm border border-stone-200 bg-[#fcfcfb] px-8 pb-20 pt-8 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-12px_rgba(0,0,0,0.12)] dark:border-stone-700 dark:bg-stone-900 dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_12px_32px_-12px_rgba(0,0,0,0.6)]">
         <DateHeader date={date} onDateChange={setDate} />
@@ -42,7 +55,7 @@ function App() {
       </main>
 
       <div className="fixed bottom-4 left-4 z-10 flex items-center gap-2">
-        <SyncStatus online={online} />
+        <SyncStatus online={online} label={syncLabel} />
         <ConnectButton />
         <ImportExport />
       </div>

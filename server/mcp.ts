@@ -50,7 +50,7 @@ export function buildMcpServer(): McpServer {
         'Returns { date, checkItems[], agenda{ hour: text } }.',
       inputSchema: { date: dateArg },
     },
-    async ({ date }) => ok(store.getDay(resolve(date))),
+    async ({ date }) => ok(await store.getDay(resolve(date))),
   );
 
   server.registerTool(
@@ -60,7 +60,7 @@ export function buildMcpServer(): McpServer {
       description: 'List all days that have any saved content, with item/entry counts. Most recent first.',
       inputSchema: {},
     },
-    async () => ok(store.listDays()),
+    async () => ok(await store.listDays()),
   );
 
   server.registerTool(
@@ -101,7 +101,7 @@ export function buildMcpServer(): McpServer {
     },
     async ({ date, id }) => {
       const d = resolve(date);
-      const current = store.getDay(d).checkItems.find((it) => it.id === id);
+      const current = (await store.getDay(d)).checkItems.find((it) => it.id === id);
       if (!current) return fail(`No check item with id "${id}" on ${d}.`);
       const item = await store.updateCheckItem(d, id, { done: !current.done });
       return ok(item);
