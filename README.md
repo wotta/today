@@ -48,13 +48,73 @@ bun run zip            # packaged .zip for store submission
 The local server exposes the planner to AI tools over MCP and to the extension
 over a small REST + SSE sync API. It binds to `127.0.0.1` only.
 
+### 1. Start the server
+
+Run it manually:
+
 ```sh
 bun run server
 ```
 
-See [`server/README.md`](server/README.md) for the available MCP tools,
-configuration (`TODAY_PORT`, `TODAY_DATA`, `TODAY_ALLOW_ORIGINS`), and how to
-connect Claude Code, Cursor, and Claude Desktop.
+Or install it as a **launchd service** (macOS only) so it starts automatically on login:
+
+```sh
+bun run server:install
+```
+
+This registers a `LaunchAgent` at `~/Library/LaunchAgents/com.today.mcp-server.plist` and starts the server immediately. It will restart automatically after reboot.
+
+You should see:
+
+```
+Today helper server running:
+  MCP endpoint : http://127.0.0.1:8765/mcp
+  Sync API     : http://127.0.0.1:8765/api
+  Data file    : ~/.today/data.json
+```
+
+### 2. Connect your AI tool
+
+The MCP endpoint is **`http://127.0.0.1:8765/mcp`** (Streamable HTTP).
+
+**Claude Code**
+
+```sh
+claude mcp add --transport http today http://127.0.0.1:8765/mcp
+```
+
+**Cursor** — add to `~/.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "today": { "url": "http://127.0.0.1:8765/mcp" }
+  }
+}
+```
+
+**Claude Desktop** (stdio-only) — bridge with `mcp-remote`:
+
+```json
+{
+  "mcpServers": {
+    "today": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "http://127.0.0.1:8765/mcp"]
+    }
+  }
+}
+```
+
+### Configuration
+
+| Variable              | Default              | Purpose                                                          |
+| --------------------- | -------------------- | ---------------------------------------------------------------- |
+| `TODAY_PORT`          | `8765`               | Port the server listens on.                                      |
+| `TODAY_DATA`          | `~/.today/data.json` | Where planner data is stored (atomic writes).                    |
+| `TODAY_ALLOW_ORIGINS` | _(none)_             | Extra CORS origins to allow (comma-separated), e.g. a dev URL.  |
+
+See [`server/README.md`](server/README.md) for the full list of available MCP tools.
 
 ## Layout
 
