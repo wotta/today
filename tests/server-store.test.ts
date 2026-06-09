@@ -56,6 +56,18 @@ describe('file mode', () => {
     expect(await store.updateCheckItem('2026-06-08', 'nope', { done: true })).toBeNull();
     expect(await store.listDays()).toEqual([]);
   });
+
+  it('pins a checklist item to an hour and clears it again', async () => {
+    const created = await store.addCheckItem('2026-06-08', 'standup');
+
+    const pinned = await store.updateCheckItem('2026-06-08', created.id, { slot: 9 });
+    expect(pinned?.slot).toBe(9);
+    expect((await store.getDay('2026-06-08')).checkItems[0].slot).toBe(9);
+
+    const cleared = await store.updateCheckItem('2026-06-08', created.id, { slot: null });
+    expect(cleared?.slot).toBeUndefined();
+    expect((await store.getDay('2026-06-08')).checkItems[0]).not.toHaveProperty('slot');
+  });
 });
 
 describe('gist mode', () => {
