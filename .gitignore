@@ -19,6 +19,10 @@ test-results
 playwright-report
 .cache/ms-playwright
 
+# Playwright MCP / ad-hoc preview screenshots
+.playwright-mcp/
+ruledsheet.png
+
 # Extension signing key (private key — never commit)
 .dev-key.pem
 
