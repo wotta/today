@@ -65,7 +65,9 @@ function gistPersistence(): Persistence {
 
 function hasContent(e: DayEntry): boolean {
   if (e.checkItems.length > 0) return true;
-  return Object.values(e.agenda).some((t) => t.trim() !== '');
+  if (e.agenda && Object.values(e.agenda).some((t) => t.trim() !== '')) return true;
+  if (e.note && e.note.trim() !== '') return true;
+  return Object.values(e.slotNotes ?? {}).some((t) => t.trim() !== '');
 }
 
 class Store extends EventEmitter {

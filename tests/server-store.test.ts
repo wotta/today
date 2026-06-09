@@ -57,6 +57,27 @@ describe('file mode', () => {
     expect(await store.listDays()).toEqual([]);
   });
 
+  it('persists per-day and per-slot notes through a put', async () => {
+    const day: DayEntry = {
+      date: '2026-06-08',
+      checkItems: [],
+      agenda: {},
+      note: 'plan the week',
+      slotNotes: { 9: 'standup agenda' },
+    };
+    await store.putDay(day, null);
+    expect(await store.getDay('2026-06-08')).toEqual(day);
+  });
+
+  it('keeps a day that has only a note, and drops it once the note is cleared', async () => {
+    const base = { date: '2026-06-08', checkItems: [], agenda: {} };
+    await store.putDay({ ...base, note: 'just a note' }, null);
+    expect(await store.listDays()).toHaveLength(1);
+
+    await store.putDay({ ...base, note: '' }, null);
+    expect(await store.listDays()).toEqual([]);
+  });
+
   it('pins a checklist item to an hour and clears it again', async () => {
     const created = await store.addCheckItem('2026-06-08', 'standup');
 
