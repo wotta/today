@@ -77,17 +77,27 @@ export function buildMcpServer(): McpServer {
     'update_check_item',
     {
       title: 'Update checklist item',
-      description: 'Edit a checklist item\'s text and/or done state by id. Provide at least one of text/done.',
+      description:
+        'Edit a checklist item\'s text, done state, and/or pinned agenda hour by id. ' +
+        'Provide at least one of text/done/slot. For slot, pass an hour to pin the item to ' +
+        'that agenda slot, or null to unpin it.',
       inputSchema: {
         date: dateArg,
         id: z.string().describe('The check item id (from get_day).'),
         text: z.string().optional().describe('New text.'),
         done: z.boolean().optional().describe('New done state.'),
+        slot: hourArg
+          .nullable()
+          .optional()
+          .describe('Agenda hour to pin this item to, or null to unpin it.'),
       },
     },
-    async ({ date, id, text, done }) => {
-      if (text === undefined && done === undefined) return fail('Provide at least one of: text, done.');
-      const item = await store.updateCheckItem(resolve(date), id, { text, done });
+    async ({ date, id, text, done, slot }) => {
+      if (text === undefined && done === undefined && slot === undefined)
+        return fail('Provide at least one of: text, done, slot.');
+      if (typeof slot === 'number' && !isValidHour(slot))
+        return fail(`Hour must be ${AGENDA_START_HOUR}–${AGENDA_END_HOUR}.`);
+      const item = await store.updateCheckItem(resolve(date), id, { text, done, slot });
       return item ? ok(item) : fail(`No check item with id "${id}" on ${resolve(date)}.`);
     },
   );

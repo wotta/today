@@ -3,7 +3,12 @@ export interface CheckItem {
   text: string;
   done: boolean;
   order: number;
+  /** Optional agenda hour (6–26) this item is pinned to. Absent = unpinned. */
+  slot?: number;
 }
+
+/** dataTransfer MIME used to drag a checklist item onto an agenda hour. */
+export const ITEM_DRAG_MIME = 'application/x-today-item';
 
 export interface DayEntry {
   /** ISO date "YYYY-MM-DD" — primary key. */

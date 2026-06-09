@@ -1,9 +1,11 @@
-import type { DayEntry } from '../lib/types';
-import { AGENDA_END_HOUR, AGENDA_START_HOUR } from '../lib/types';
+import { useState } from 'react';
+import type { CheckItem, DayEntry } from '../lib/types';
+import { AGENDA_END_HOUR, AGENDA_START_HOUR, ITEM_DRAG_MIME } from '../lib/types';
 import { hourLabel, isLateNight } from '../lib/date';
 
 interface Props {
   agenda: Record<number, string>;
+  checkItems: CheckItem[];
   update: (mutate: (prev: DayEntry) => DayEntry) => void;
   /** Hour to subtly mark as "now", or null when not viewing today. */
   currentHour: number | null;
@@ -14,9 +16,44 @@ const HOURS = Array.from(
   (_, i) => AGENDA_START_HOUR + i,
 );
 
-export function Agenda({ agenda, update, currentHour }: Props) {
+export function Agenda({ agenda, checkItems, update, currentHour }: Props) {
+  // The hour currently hovered during a drag, for a drop-target highlight.
+  const [dropHour, setDropHour] = useState<number | null>(null);
+
   const setHour = (hour: number, text: string) =>
     update((prev) => ({ ...prev, agenda: { ...prev.agenda, [hour]: text } }));
+
+  /** Pin a checklist item to an hour (or move it between hours). */
+  const pin = (id: string, hour: number) =>
+    update((prev) => ({
+      ...prev,
+      checkItems: prev.checkItems.map((it) => (it.id === id ? { ...it, slot: hour } : it)),
+    }));
+
+  const unpin = (id: string) =>
+    update((prev) => ({
+      ...prev,
+      checkItems: prev.checkItems.map((it) =>
+        it.id === id ? { ...it, slot: undefined } : it,
+      ),
+    }));
+
+  const toggle = (id: string) =>
+    update((prev) => ({
+      ...prev,
+      checkItems: prev.checkItems.map((it) =>
+        it.id === id ? { ...it, done: !it.done } : it,
+      ),
+    }));
+
+  // Group pinned items by their slot so each hour can render its chips.
+  const pinnedByHour = new Map<number, CheckItem[]>();
+  for (const item of checkItems) {
+    if (item.slot === undefined) continue;
+    const list = pinnedByHour.get(item.slot) ?? [];
+    list.push(item);
+    pinnedByHour.set(item.slot, list);
+  }
 
   return (
     <section>
@@ -27,16 +64,34 @@ export function Agenda({ agenda, update, currentHour }: Props) {
         {HOURS.map((hour) => {
           const even = hour % 2 === 0;
           const isNow = hour === currentHour;
+          const pinned = pinnedByHour.get(hour) ?? [];
           return (
             <li
               key={hour}
+              onDragOver={(e) => {
+                if (!e.dataTransfer.types.includes(ITEM_DRAG_MIME)) return;
+                e.preventDefault();
+                if (dropHour !== hour) setDropHour(hour);
+              }}
+              onDragLeave={() => setDropHour((h) => (h === hour ? null : h))}
+              onDrop={(e) => {
+                const id = e.dataTransfer.getData(ITEM_DRAG_MIME);
+                setDropHour(null);
+                if (!id) return;
+                e.preventDefault();
+                pin(id, hour);
+              }}
               className={
                 'flex items-stretch ' +
                 // Even hours get a solid hour line; odd hours a fainter half-hour rule.
                 (even
                   ? 'border-t border-stone-300 dark:border-stone-700 '
                   : 'border-t border-stone-200/60 dark:border-stone-700/40 ') +
-                (isNow ? 'bg-amber-50/70 dark:bg-amber-400/10' : '')
+                (dropHour === hour
+                  ? 'bg-amber-100/70 dark:bg-amber-400/15 '
+                  : isNow
+                    ? 'bg-amber-50/70 dark:bg-amber-400/10'
+                    : '')
               }
             >
               <span
@@ -52,12 +107,26 @@ export function Agenda({ agenda, update, currentHour }: Props) {
               >
                 {even ? hourLabel(hour) : ''}
               </span>
-              <input
-                value={agenda[hour] ?? ''}
-                onChange={(e) => setHour(hour, e.target.value)}
-                className="min-h-[34px] flex-1 bg-transparent px-3 text-[15px] text-stone-700 outline-none dark:text-stone-200"
-                aria-label={`Agenda at ${hourLabel(hour)}`}
-              />
+              <div className="flex min-h-[34px] flex-1 flex-col justify-center py-1">
+                <input
+                  value={agenda[hour] ?? ''}
+                  onChange={(e) => setHour(hour, e.target.value)}
+                  className="flex-1 bg-transparent px-3 text-[15px] text-stone-700 outline-none dark:text-stone-200"
+                  aria-label={`Agenda at ${hourLabel(hour)}`}
+                />
+                {pinned.length > 0 && (
+                  <div className="flex flex-wrap gap-1 px-3 pt-1">
+                    {pinned.map((item) => (
+                      <Chip
+                        key={item.id}
+                        item={item}
+                        onToggle={() => toggle(item.id)}
+                        onUnpin={() => unpin(item.id)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
             </li>
           );
         })}
@@ -65,5 +134,56 @@ export function Agenda({ agenda, update, currentHour }: Props) {
         <li className="border-t border-stone-300 dark:border-stone-700" aria-hidden />
       </ul>
     </section>
+  );
+}
+
+function Chip({
+  item,
+  onToggle,
+  onUnpin,
+}: {
+  item: CheckItem;
+  onToggle: () => void;
+  onUnpin: () => void;
+}) {
+  return (
+    <span
+      draggable
+      onDragStart={(e) => {
+        // Re-pin by dragging the chip onto a different hour.
+        e.dataTransfer.setData(ITEM_DRAG_MIME, item.id);
+        e.dataTransfer.effectAllowed = 'move';
+      }}
+      className={
+        'group/chip inline-flex max-w-full cursor-grab items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 py-0.5 pl-1.5 pr-1 text-[13px] dark:border-amber-400/20 dark:bg-amber-400/10 ' +
+        (item.done ? 'opacity-60' : '')
+      }
+    >
+      <input
+        type="checkbox"
+        checked={item.done}
+        onChange={onToggle}
+        aria-label={`Toggle "${item.text}"`}
+        className="h-3.5 w-3.5 shrink-0 cursor-pointer accent-amber-600 dark:accent-amber-400"
+      />
+      <span
+        className={
+          'truncate ' +
+          (item.done
+            ? 'text-amber-700/60 line-through dark:text-amber-300/50'
+            : 'text-amber-800 dark:text-amber-200')
+        }
+      >
+        {item.text}
+      </span>
+      <button
+        type="button"
+        aria-label={`Unpin "${item.text}"`}
+        onClick={onUnpin}
+        className="shrink-0 rounded-full px-1 text-amber-500/70 hover:text-amber-700 dark:text-amber-300/60 dark:hover:text-amber-200"
+      >
+        ✕
+      </button>
+    </span>
   );
 }

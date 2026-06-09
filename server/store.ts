@@ -152,7 +152,7 @@ class Store extends EventEmitter {
   async updateCheckItem(
     date: string,
     id: string,
-    patch: { text?: string; done?: boolean },
+    patch: { text?: string; done?: boolean; slot?: number | null },
   ): Promise<CheckItem | null> {
     let updated: CheckItem | null = null;
     await this.mutate(
@@ -162,6 +162,9 @@ class Store extends EventEmitter {
         if (!item) return null;
         if (patch.text !== undefined) item.text = patch.text;
         if (patch.done !== undefined) item.done = patch.done;
+        // null clears the pin; a number pins to that hour.
+        if (patch.slot === null) delete item.slot;
+        else if (patch.slot !== undefined) item.slot = patch.slot;
         updated = item;
         return day;
       },

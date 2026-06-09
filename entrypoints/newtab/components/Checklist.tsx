@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react';
 import type { CheckItem, DayEntry } from '../lib/types';
+import { ITEM_DRAG_MIME } from '../lib/types';
+import { hourLabel } from '../lib/date';
 
 interface Props {
   items: CheckItem[];
@@ -79,7 +81,12 @@ export function Checklist({ items, update }: Props) {
           <li
             key={item.id}
             draggable
-            onDragStart={() => setDragId(item.id)}
+            onDragStart={(e) => {
+              setDragId(item.id);
+              // Let the agenda accept this item as a drop to pin it to an hour.
+              e.dataTransfer.setData(ITEM_DRAG_MIME, item.id);
+              e.dataTransfer.effectAllowed = 'copyMove';
+            }}
             onDragEnd={() => setDragId(null)}
             onDragOver={(e) => e.preventDefault()}
             onDrop={() => {
@@ -113,6 +120,14 @@ export function Checklist({ items, update }: Props) {
                   : 'text-stone-700 dark:text-stone-200')
               }
             />
+            {item.slot !== undefined && (
+              <span
+                className="shrink-0 select-none rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-amber-700 dark:bg-amber-400/15 dark:text-amber-300"
+                title="Pinned to the agenda"
+              >
+                {hourLabel(item.slot)}
+              </span>
+            )}
             <button
               type="button"
               aria-label="Delete item"

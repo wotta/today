@@ -48,6 +48,7 @@ function App() {
         <div className="mt-8">
           <Agenda
             agenda={entry.agenda}
+            checkItems={entry.checkItems}
             update={update}
             currentHour={currentAgendaHour(date)}
           />
