@@ -9,6 +9,32 @@ tracks *where we are* against its 6-step build sequence.
 
 ---
 
+## ▶️ Resume prompt (paste this to start the next session)
+
+```
+Continue the rich-notes feature (#5) on the `feature/rich-notes` branch.
+
+Read these first, in order:
+1. docs/superpowers/specs/2026-06-09-rich-notes-design.md  (approved design)
+2. docs/superpowers/plans/2026-06-10-rich-notes-handoff.md (where we left off)
+
+Then pick up at the top of "Next actions" in the handoff:
+- First, tune entrypoints/newtab/components/RuledSheet.tsx against the
+  notebook photos in /mnt/c/Users/wouter/Downloads/ (IMG_1120.jpg upright,
+  IMG_1123.jpg). Main fix: the vertical guides read too "graph-paper" —
+  space them wider and fainter so it reads as ruled lines with occasional
+  paragraph guides. Verify with the screenshot loop documented in the
+  handoff, and show me a screenshot before moving on.
+- Then proceed through steps 3→5 (router, note page, entry points), pausing
+  for my review after each step.
+
+Conventions: markdown-only notes (BlockNote is dropped); keep tests lean and
+realistic; no Co-Authored-By trailer on commits; commit per step with a clear
+message; don't push unless I ask.
+```
+
+---
+
 ## Status by step
 
 | Step | What | State |
