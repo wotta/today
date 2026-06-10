@@ -16,8 +16,14 @@ import type { ReactNode } from 'react';
 
 /** Baseline spacing (px). Thirds fall at ROW/3 and 2·ROW/3. */
 const ROW = 28;
-/** Vertical guide spacing (px). Equal to ROW for a square table grid. */
-const CELL = 28;
+/**
+ * Vertical guide spacing (px). In the source notebook the paragraph guides sit
+ * roughly every 3 ruled rows — much wider than the line height — so the page
+ * reads as ruled lines with occasional guides, not graph paper.
+ */
+const CELL = ROW * 3;
+/** Margin tick (メモリ) spacing (px). Denser than the verticals: one per row width. */
+const TICK = ROW;
 
 interface Props {
   children?: ReactNode;
@@ -76,7 +82,7 @@ export function RuledSheet({
               strokeDasharray="1 3.5"
             />
             {/* faint vertical guide */}
-            <line x1="0.5" y1="0" x2="0.5" y2={ROW} stroke="currentColor" strokeOpacity="0.18" />
+            <line x1="0.5" y1="0" x2="0.5" y2={ROW} stroke="currentColor" strokeOpacity="0.12" />
           </pattern>
         </defs>
         <rect width="100%" height="100%" fill={`url(#${patternId})`} />
@@ -107,9 +113,9 @@ export function RuledSheet({
   );
 }
 
-/** Short vertical ticks every CELL px, drawn with currentColor at low opacity. */
+/** Short vertical ticks every TICK px, drawn with currentColor at low opacity. */
 const tickStyle: React.CSSProperties = {
   backgroundImage:
-    'repeating-linear-gradient(90deg, currentColor 0 1px, transparent 1px ' + CELL + 'px)',
+    'repeating-linear-gradient(90deg, currentColor 0 1px, transparent 1px ' + TICK + 'px)',
   opacity: 0.28,
 };
