@@ -2,10 +2,15 @@ import { useState } from 'react';
 import type { CheckItem, DayEntry } from '../lib/types';
 import { AGENDA_END_HOUR, AGENDA_START_HOUR, ITEM_DRAG_MIME } from '../lib/types';
 import { hourLabel, isLateNight } from '../lib/date';
+import { PER_SLOT_NOTES } from '../lib/flags';
+import { noteHash } from '../lib/route';
 
 interface Props {
+  date: string;
   agenda: Record<number, string>;
   checkItems: CheckItem[];
+  /** Hour -> markdown note, to mark hours that have one. */
+  slotNotes?: Record<number, string>;
   update: (mutate: (prev: DayEntry) => DayEntry) => void;
   /** Hour to subtly mark as "now", or null when not viewing today. */
   currentHour: number | null;
@@ -16,7 +21,7 @@ const HOURS = Array.from(
   (_, i) => AGENDA_START_HOUR + i,
 );
 
-export function Agenda({ agenda, checkItems, update, currentHour }: Props) {
+export function Agenda({ date, agenda, checkItems, slotNotes, update, currentHour }: Props) {
   // The hour currently hovered during a drag, for a drop-target highlight.
   const [dropHour, setDropHour] = useState<number | null>(null);
 
@@ -65,6 +70,7 @@ export function Agenda({ agenda, checkItems, update, currentHour }: Props) {
           const even = hour % 2 === 0;
           const isNow = hour === currentHour;
           const pinned = pinnedByHour.get(hour) ?? [];
+          const hasNote = (slotNotes?.[hour] ?? '').trim() !== '';
           return (
             <li
               key={hour}
@@ -82,7 +88,7 @@ export function Agenda({ agenda, checkItems, update, currentHour }: Props) {
                 pin(id, hour);
               }}
               className={
-                'flex items-stretch ' +
+                'group flex items-stretch ' +
                 // Even hours get a solid hour line; odd hours a fainter half-hour rule.
                 (even
                   ? 'border-t border-stone-300 dark:border-stone-700 '
@@ -108,12 +114,32 @@ export function Agenda({ agenda, checkItems, update, currentHour }: Props) {
                 {even ? hourLabel(hour) : ''}
               </span>
               <div className="flex min-h-[34px] flex-1 flex-col justify-center py-1">
-                <input
-                  value={agenda[hour] ?? ''}
-                  onChange={(e) => setHour(hour, e.target.value)}
-                  className="flex-1 bg-transparent px-3 text-[15px] text-stone-700 outline-none dark:text-stone-200"
-                  aria-label={`Agenda at ${hourLabel(hour)}`}
-                />
+                <div className="flex items-center">
+                  <input
+                    value={agenda[hour] ?? ''}
+                    onChange={(e) => setHour(hour, e.target.value)}
+                    className="flex-1 bg-transparent px-3 text-[15px] text-stone-700 outline-none dark:text-stone-200"
+                    aria-label={`Agenda at ${hourLabel(hour)}`}
+                  />
+                  {PER_SLOT_NOTES && (
+                    <button
+                      type="button"
+                      aria-label={`Open notes for ${hourLabel(hour)}`}
+                      title={hasNote ? 'This hour has notes' : 'Add notes for this hour'}
+                      onClick={() => {
+                        window.location.hash = noteHash(date, hour);
+                      }}
+                      className={
+                        'px-2 text-[13px] transition-opacity ' +
+                        (hasNote
+                          ? 'text-amber-600 dark:text-amber-400'
+                          : 'text-stone-300 opacity-0 hover:text-stone-600 focus-visible:opacity-100 group-hover:opacity-100 dark:text-stone-600 dark:hover:text-stone-300')
+                      }
+                    >
+                      ✎
+                    </button>
+                  )}
+                </div>
                 {pinned.length > 0 && (
                   <div className="flex flex-wrap gap-1 px-3 pt-1">
                     {pinned.map((item) => (

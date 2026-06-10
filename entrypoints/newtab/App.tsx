@@ -9,7 +9,7 @@ import { ConnectButton } from './components/ConnectButton';
 import { ImportExport } from './components/ImportExport';
 import { useDay } from './lib/useDay';
 import { isGistActive } from './lib/backend';
-import { useRoute } from './lib/route';
+import { noteHash, useRoute } from './lib/route';
 import { useTheme } from './lib/theme';
 import { useDateShortcuts } from './lib/useDateShortcuts';
 import { todayKey } from './lib/date';
@@ -68,13 +68,32 @@ function App() {
   return (
     <div key="planner" className="page-turn flex min-h-full justify-center px-4 pt-10 pb-18">
       {/* Centered notebook page */}
-      <main className="w-full max-w-xl rounded-sm border border-stone-200 bg-[#fcfcfb] px-8 pb-20 pt-8 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-12px_rgba(0,0,0,0.12)] dark:border-stone-700 dark:bg-stone-900 dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_12px_32px_-12px_rgba(0,0,0,0.6)]">
+      <main className="relative w-full max-w-xl rounded-sm border border-stone-200 bg-[#fcfcfb] px-8 pb-20 pt-8 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-12px_rgba(0,0,0,0.12)] dark:border-stone-700 dark:bg-stone-900 dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_12px_32px_-12px_rgba(0,0,0,0.6)]">
+        {/* Page-corner notes affordance — "flip to the day's notes page". */}
+        <button
+          type="button"
+          aria-label={`Open notes for ${date}`}
+          title="Open the day's notes page"
+          onClick={() => {
+            window.location.hash = noteHash(date);
+          }}
+          className={
+            'absolute right-2.5 top-2.5 rounded-full px-2 py-1 text-[13px] transition-colors ' +
+            ((entry.note ?? '').trim() !== ''
+              ? 'text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300'
+              : 'text-stone-300 hover:text-stone-600 dark:text-stone-600 dark:hover:text-stone-300')
+          }
+        >
+          ✎
+        </button>
         <DateHeader date={date} onDateChange={setDate} />
         <Checklist items={entry.checkItems} update={update} />
         <div className="mt-8">
           <Agenda
+            date={date}
             agenda={entry.agenda}
             checkItems={entry.checkItems}
+            slotNotes={entry.slotNotes}
             update={update}
             currentHour={currentAgendaHour(date)}
           />

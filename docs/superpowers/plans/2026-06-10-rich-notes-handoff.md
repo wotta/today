@@ -42,8 +42,8 @@ message; don't push unless I ask.
 | 1 | Model + persistence (`note`/`slotNotes` strings, Zod, `hasContent`, tests) | ✅ done & committed (`a2c49d5`) |
 | 2 | `<RuledSheet>` — Logical Note CSS surface | ✅ tuned & committed (`b7da66f`): verticals every 3 rows @ 0.12, ticks per row |
 | 3 | Hash router (planner ↔ note view, back + scroll restore, page-turn) | ✅ done: `lib/route.ts`, `NotePage` (step-3 scope: plain textarea + autosave), App switch, page-turn CSS, route tests. Verified in served build. |
-| 4 | Note page (top bar, collapsible right rail, live-preview markdown, autosave) | ⬜ not started |
-| 5 | Entry points (header "Notes" btn, hover ✎ + dot on agenda rows, variant flag) | ⬜ not started |
+| 4 | Note page (top bar, collapsible right rail, render-on-blur markdown, autosave) | ✅ done (`b4403ea`): markdown-it (html:false), .note-md typeset locked to ruling, ⓘ rail |
+| 5 | Entry points (page-corner ✎ for day note, hover ✎ on agenda rows, variant flag) | ✅ done: corner ✎ placement chosen by user over header pill; App-level navigation behavior tests |
 | 6 | *(follow-up)* MCP write tools `set_note` / `set_slot_note` | ⬜ deferred |
 
 Nothing is pushed. Full test suite was green at step 1 (72 passing), `tsc` clean.
