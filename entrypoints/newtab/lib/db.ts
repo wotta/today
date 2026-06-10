@@ -53,11 +53,18 @@ export interface ExportEnvelope {
   days: Record<string, DayEntry>;
 }
 
-export async function exportAll(): Promise<void> {
-  const all = await db.days.toArray();
-  const days: Record<string, DayEntry> = {};
-  for (const entry of all) {
-    days[entry.date] = entry;
+/**
+ * Download all days as a JSON envelope. Pass the authoritative `days` map when
+ * the backend is reachable; without it this falls back to the IndexedDB cache,
+ * which only holds days this browser has visited.
+ */
+export async function exportAll(days?: Record<string, DayEntry>): Promise<void> {
+  if (!days) {
+    const all = await db.days.toArray();
+    days = {};
+    for (const entry of all) {
+      days[entry.date] = entry;
+    }
   }
   const envelope: ExportEnvelope = {
     version: 1,

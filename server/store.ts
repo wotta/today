@@ -87,6 +87,11 @@ class Store extends EventEmitter {
     return days[date] ?? emptyDay(date);
   }
 
+  /** The full map of stored days, straight from the active backend (for export). */
+  async allDays(): Promise<Days> {
+    return this.backend().load();
+  }
+
   async listDays(): Promise<Array<{ date: string; checkItems: number; agendaEntries: number }>> {
     const days = await this.backend().load();
     return Object.values(days)

@@ -14,6 +14,13 @@ export async function fetchDay(date: string): Promise<DayEntry> {
   return (await res.json()) as DayEntry;
 }
 
+/** Full map of all stored days from the server (source of truth), for export. */
+export async function fetchAllDays(): Promise<Record<string, DayEntry>> {
+  const res = await fetch(`${SERVER_BASE}/api/export`);
+  if (!res.ok) throw new Error(`export failed: ${res.status}`);
+  return ((await res.json()) as { days: Record<string, DayEntry> }).days;
+}
+
 export async function putDay(entry: DayEntry): Promise<void> {
   const res = await fetch(`${SERVER_BASE}/api/day/${entry.date}`, {
     method: 'PUT',

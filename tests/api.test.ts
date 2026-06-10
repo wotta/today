@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { server } from './msw';
 import {
   fetchDay,
+  fetchAllDays,
   putDay,
   subscribe,
   SERVER_BASE,
@@ -29,6 +30,24 @@ describe('fetchDay', () => {
       http.get(`${SERVER_BASE}/api/day/:date`, () => new HttpResponse(null, { status: 500 })),
     );
     await expect(fetchDay('2026-06-08')).rejects.toThrow();
+  });
+});
+
+describe('fetchAllDays', () => {
+  it('returns the days map from /api/export', async () => {
+    server.use(
+      http.get(`${SERVER_BASE}/api/export`, () =>
+        HttpResponse.json({ days: { '2026-06-08': sample } }),
+      ),
+    );
+    expect(await fetchAllDays()).toEqual({ '2026-06-08': sample });
+  });
+
+  it('throws on a non-200 response', async () => {
+    server.use(
+      http.get(`${SERVER_BASE}/api/export`, () => new HttpResponse(null, { status: 500 })),
+    );
+    await expect(fetchAllDays()).rejects.toThrow();
   });
 });
 
