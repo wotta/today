@@ -3,16 +3,18 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const h = vi.hoisted(() => ({
-  exportAll: vi.fn<() => Promise<void>>(),
+  exportAll: vi.fn<(days?: unknown) => Promise<void>>(),
   importDays: vi.fn<() => Promise<{ imported: number; skipped: number }>>(),
+  fetchAllDays: vi.fn<() => Promise<unknown>>(),
 }));
 
 vi.mock('../entrypoints/newtab/lib/db', () => ({
-  exportAll: () => h.exportAll(),
+  exportAll: (days?: unknown) => h.exportAll(days),
   importDays: () => h.importDays(),
 }));
 vi.mock('../entrypoints/newtab/lib/backend', () => ({
   putDay: vi.fn(),
+  fetchAllDays: () => h.fetchAllDays(),
 }));
 
 import { ImportExport } from '../entrypoints/newtab/components/ImportExport';
@@ -20,6 +22,7 @@ import { ImportExport } from '../entrypoints/newtab/components/ImportExport';
 beforeEach(() => {
   h.exportAll.mockReset().mockResolvedValue(undefined);
   h.importDays.mockReset().mockResolvedValue({ imported: 0, skipped: 0 });
+  h.fetchAllDays.mockReset().mockResolvedValue({});
 });
 
 function uploadFile() {
@@ -29,14 +32,27 @@ function uploadFile() {
 }
 
 describe('export', () => {
-  it('calls exportAll and flashes "Exported" on success', async () => {
+  it('exports the backend data (source of truth) when reachable', async () => {
+    const fromServer = { '2026-06-10': { date: '2026-06-10', checkItems: [], agenda: { 9: 'x' } } };
+    h.fetchAllDays.mockResolvedValue(fromServer);
     const user = userEvent.setup();
     render(<ImportExport />);
 
     await user.click(screen.getByTitle('Export all days to JSON'));
 
-    expect(h.exportAll).toHaveBeenCalledOnce();
+    expect(h.exportAll).toHaveBeenCalledWith(fromServer);
     expect(await screen.findByText('Exported')).toBeInTheDocument();
+  });
+
+  it('falls back to the local cache when the backend is unreachable', async () => {
+    h.fetchAllDays.mockRejectedValue(new Error('offline'));
+    const user = userEvent.setup();
+    render(<ImportExport />);
+
+    await user.click(screen.getByTitle('Export all days to JSON'));
+
+    expect(h.exportAll).toHaveBeenCalledWith(undefined);
+    expect(await screen.findByText('Exported (local cache)')).toBeInTheDocument();
   });
 
   it('flashes "Export failed" when exportAll throws', async () => {

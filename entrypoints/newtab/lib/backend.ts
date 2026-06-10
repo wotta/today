@@ -13,7 +13,7 @@ export type { RemoteChange } from './api';
  * choice is read once and cached for the session — connecting/disconnecting
  * Gist happens on the Options page, after which the new-tab page reloads.
  */
-type Backend = Pick<typeof api, 'fetchDay' | 'putDay' | 'beaconDay' | 'subscribe'>;
+type Backend = Pick<typeof api, 'fetchDay' | 'fetchAllDays' | 'putDay' | 'beaconDay' | 'subscribe'>;
 
 let selected: Promise<Backend> | null = null;
 
@@ -26,6 +26,11 @@ function backend(): Promise<Backend> {
 
 export async function fetchDay(date: string): Promise<DayEntry> {
   return (await backend()).fetchDay(date);
+}
+
+/** Full days map from the active backend (server or Gist), for export. */
+export async function fetchAllDays(): Promise<Record<string, DayEntry>> {
+  return (await backend()).fetchAllDays();
 }
 
 export async function putDay(entry: DayEntry): Promise<void> {

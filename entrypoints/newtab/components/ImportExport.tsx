@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { exportAll, importDays } from '../lib/db';
-import { putDay } from '../lib/backend';
+import { fetchAllDays, putDay } from '../lib/backend';
+import type { DayEntry } from '../lib/types';
 
 type Status = { ok: boolean; message: string } | null;
 
@@ -19,8 +20,16 @@ export function ImportExport() {
 
   const handleExport = async () => {
     try {
-      await exportAll();
-      flash(true, 'Exported');
+      // Prefer the connected backend (source of truth); the IndexedDB cache
+      // only holds days this browser has visited.
+      let days: Record<string, DayEntry> | undefined;
+      try {
+        days = await fetchAllDays();
+      } catch {
+        days = undefined; // backend unreachable — export the local cache
+      }
+      await exportAll(days);
+      flash(true, days ? 'Exported' : 'Exported (local cache)');
     } catch {
       flash(false, 'Export failed');
     }

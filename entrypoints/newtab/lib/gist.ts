@@ -147,6 +147,15 @@ export async function fetchDay(date: string): Promise<DayEntry> {
   return days[date] ?? emptyDay(date);
 }
 
+/** Latest full days map from the Gist (fresh read; refreshes the session cache). */
+export async function fetchAllDays(): Promise<Record<string, DayEntry>> {
+  const config = await getGistConfig();
+  if (!config) throw new GistError('unknown', 0, 'Gist not configured');
+  const days = await load(config);
+  cache = days;
+  return days;
+}
+
 export async function putDay(entry: DayEntry): Promise<void> {
   const config = await getGistConfig();
   if (!config) throw new GistError('unknown', 0, 'Gist not configured');

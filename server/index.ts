@@ -122,6 +122,12 @@ app.get('/api/days', async (_req, res) => {
   res.json(await store.listDays());
 });
 
+// Full day entries for export — the source-of-truth counterpart to the
+// extension's IndexedDB cache.
+app.get('/api/export', async (_req, res) => {
+  res.json({ days: await store.allDays() });
+});
+
 app.get('/api/day/:date', async (req, res) => {
   const { date } = req.params;
   if (!DATE_RE.test(date)) {
