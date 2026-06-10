@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { useDay } from '../lib/useDay';
 import { closeNote } from '../lib/route';
-import { renderMarkdown } from '../lib/markdown';
 import { formatLongDate, hourLabel } from '../lib/date';
 import type { CheckItem } from '../lib/types';
-import { RuledSheet, SHEET_ROW } from './RuledSheet';
+import { MarkdownEditor } from './MarkdownEditor';
+import { RuledSheet } from './RuledSheet';
 
 interface Props {
   date: string;
@@ -14,9 +14,9 @@ interface Props {
 
 /**
  * Full-screen note page — the "notes pages" of the same notebook the planner
- * is a page of. Markdown renders on blur ("typesets"); clicking the page
- * returns to raw-text editing. A collapsible right rail shows read-only
- * context: the slot's agenda line and pinned todos, or day-level context.
+ * is a page of. The editor styles markdown source live as you type (marks stay
+ * visible). A collapsible right rail shows read-only context: the slot's
+ * agenda line and pinned todos, or day-level context.
  */
 export function NotePage({ date, hour }: Props) {
   const { entry, update, online } = useDay(date);
@@ -79,8 +79,16 @@ export function NotePage({ date, hour }: Props) {
 
         <div className="flex flex-1 items-stretch gap-3">
           {/* The notebook sheet */}
-          <RuledSheet className="min-h-[75vh] flex-1 rounded-sm border border-stone-200 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-12px_rgba(0,0,0,0.12)] dark:border-stone-700 dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_12px_32px_-12px_rgba(0,0,0,0.6)]">
-            <NoteEditor value={value} onChange={setValue} date={date} hour={hour} />
+          <RuledSheet className="min-h-[75vh] flex-1 rounded-sm border border-stone-200 text-stone-700 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-12px_rgba(0,0,0,0.12)] dark:border-stone-700 dark:text-stone-200 dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_12px_32px_-12px_rgba(0,0,0,0.6)]">
+            <MarkdownEditor
+              value={value}
+              onChange={setValue}
+              ariaLabel={
+                hour === undefined
+                  ? `Notes for ${date}`
+                  : `Notes for ${date} at ${hourLabel(hour)}`
+              }
+            />
           </RuledSheet>
 
           {/* Collapsible context rail (read-only) */}
@@ -96,68 +104,6 @@ export function NotePage({ date, hour }: Props) {
         </div>
       </main>
     </div>
-  );
-}
-
-/**
- * Render-on-blur markdown editor. Focused: a plain textarea with the raw
- * source. Blurred: the markdown typeset onto the ruling. Both share the same
- * font size and 28px line height, so lines stay on the ruled baselines in
- * either mode.
- */
-function NoteEditor({
-  value,
-  onChange,
-  date,
-  hour,
-}: {
-  value: string;
-  onChange: (text: string) => void;
-  date: string;
-  hour?: number;
-}) {
-  // Start in edit mode for an empty note; show the typeset view otherwise.
-  const [editing, setEditing] = useState(value === '');
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // Focus when entering edit mode (autoFocus only fires on first mount).
-  useEffect(() => {
-    if (editing) textareaRef.current?.focus();
-  }, [editing]);
-
-  const label = hour === undefined ? `Notes for ${date}` : `Notes for ${date} at ${hourLabel(hour)}`;
-  const sizing: React.CSSProperties = { lineHeight: `${SHEET_ROW}px`, paddingTop: SHEET_ROW * 2 };
-
-  if (!editing) {
-    return (
-      <div
-        role="button"
-        tabIndex={0}
-        aria-label={`${label} (click to edit)`}
-        onClick={() => setEditing(true)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') setEditing(true);
-        }}
-        className="note-md h-full min-h-[75vh] w-full cursor-text px-8 pb-8 text-stone-700 dark:text-stone-200"
-        style={sizing}
-        dangerouslySetInnerHTML={{ __html: renderMarkdown(value) }}
-      />
-    );
-  }
-
-  return (
-    <textarea
-      ref={textareaRef}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      onBlur={() => {
-        if (value !== '') setEditing(false);
-      }}
-      aria-label={label}
-      placeholder="Write…"
-      className="block h-full min-h-[75vh] w-full resize-none bg-transparent px-8 text-[15px] text-stone-700 outline-none placeholder:text-stone-300 dark:text-stone-200 dark:placeholder:text-stone-600"
-      style={sizing}
-    />
   );
 }
 

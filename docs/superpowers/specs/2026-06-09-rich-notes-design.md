@@ -195,7 +195,16 @@ Each step is independently shippable; markdown-first keeps every step small.
 - **Content format:** plain markdown string, no discriminator. BlockNote dropped
   entirely — the notebook UI is pure CSS and doesn't need it.
 - **Context rail:** collapsible, right-side, collapsed by default.
-- **Markdown:** live preview (render as you type on the ruling).
+- **Editor (revised 2026-06-10):** live **styled-source** editing — CodeMirror 6
+  with a markdown highlight theme. The source is always editable; `# Title`
+  styles as a heading *as you type* with the marks visible and receded
+  (iA-Writer style). Supersedes the first-pass render-on-blur textarea, which
+  was built, reviewed, and rejected ("I would like a way to render markdown as
+  we are typing"). markdown-it was removed with it; CM6 never renders HTML, so
+  notes are XSS-safe by construction.
+- **Sheet (revised 2026-06-10):** ruling kept but much fainter (baselines 0.22,
+  thirds 0.10, verticals 0.05, ticks 0.12) and the decorative Date block
+  removed, after feedback that the full-strength ruling wasn't calm.
 - **MCP note tools:** read-only this pass; write tools (`set_note` /
   `set_slot_note`) deferred to a follow-up.
 - **Variant flag:** dev-only constant for the prototype (no Options toggle yet).

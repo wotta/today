@@ -19,37 +19,26 @@ function day(over: Partial<DayEntry> = {}): DayEntry {
 }
 
 describe('NotePage editor', () => {
-  it('typesets an existing note as markdown and switches to a textarea on click', async () => {
+  it('shows the existing note source in the live editor', () => {
     h.entry = day({ note: '# Plan\n**bold** move' });
     render(<NotePage date="2026-06-10" />);
 
-    // Rendered view: markdown is typeset, no marks visible.
-    expect(screen.getByRole('heading', { name: 'Plan' })).toBeInTheDocument();
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole('button', { name: /click to edit/i }));
-
-    // Edit view: the raw source in a textarea.
-    expect(screen.getByRole('textbox')).toHaveValue('# Plan\n**bold** move');
+    const editor = screen.getByRole('textbox', { name: 'Notes for 2026-06-10' });
+    // Styled source: the markdown marks stay visible in the document.
+    expect(editor.textContent).toContain('# Plan');
+    expect(editor.textContent).toContain('**bold** move');
   });
 
-  it('starts in edit mode when the note is empty', () => {
-    h.entry = day();
-    render(<NotePage date="2026-06-10" />);
+  it('labels a slot note with its hour', () => {
+    h.entry = day({ slotNotes: { 14: 'dentist notes' } });
+    render(<NotePage date="2026-06-10" hour={14} />);
 
-    expect(screen.getByRole('textbox')).toHaveValue('');
-  });
-
-  it('escapes raw HTML in the typeset view', () => {
-    h.entry = day({ note: '<img src=x onerror=alert(1)>' });
-    const { container } = render(<NotePage date="2026-06-10" />);
-
-    expect(container.querySelector('img')).toBeNull();
+    const editor = screen.getByRole('textbox', { name: 'Notes for 2026-06-10 at 14:00' });
+    expect(editor.textContent).toContain('dentist notes');
   });
 
   it('shows slot context (agenda text + pinned todos) in the rail', async () => {
     h.entry = day({
-      note: undefined,
       slotNotes: { 14: 'dentist notes' },
       agenda: { 14: 'Dentist appointment' },
       checkItems: [{ id: 'a', text: 'Bring x-rays', done: false, order: 0, slot: 14 }],
