@@ -22,6 +22,10 @@ export const DayEntrySchema = z.object({
   checkItems: z.array(CheckItemSchema),
   /** Hour (6–26, where 24=midnight, 25=1am, 26=2am) -> free text. JSON keys are strings. */
   agenda: z.record(z.string(), z.string()),
+  /** Freeform markdown note for the whole day. */
+  note: z.string().optional(),
+  /** Hour (6–26) -> markdown note. JSON keys are strings, like agenda. */
+  slotNotes: z.record(z.string(), z.string()).optional(),
 });
 export type DayEntry = z.infer<typeof DayEntrySchema>;
 

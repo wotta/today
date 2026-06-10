@@ -31,9 +31,23 @@ function rowForHour(hour: number): HTMLElement {
   return input.closest('li')!;
 }
 
+/** Render the Agenda with required-but-irrelevant props defaulted. */
+function renderAgenda(props: Partial<React.ComponentProps<typeof Agenda>> = {}) {
+  return render(
+    <Agenda
+      date="2026-06-09"
+      agenda={{}}
+      checkItems={[item()]}
+      update={vi.fn()}
+      currentHour={null}
+      {...props}
+    />,
+  );
+}
+
 describe('Agenda slot pinning', () => {
   it('renders a pinned item as a chip in its hour row', () => {
-    render(<Agenda agenda={{}} checkItems={[item({ slot: 6 })]} update={vi.fn()} currentHour={null} />);
+    renderAgenda({ checkItems: [item({ slot: 6 })] });
 
     const chip = screen.getByText('Dit is een test');
     expect(chip).toBeInTheDocument();
@@ -44,7 +58,7 @@ describe('Agenda slot pinning', () => {
 
   it('pins a dropped checklist item to the hour it was dropped on', () => {
     const update = vi.fn();
-    render(<Agenda agenda={{}} checkItems={[item()]} update={update} currentHour={null} />);
+    renderAgenda({ update });
 
     fireEvent.drop(rowForHour(6), {
       dataTransfer: { types: [ITEM_DRAG_MIME], getData: () => 'a' },
@@ -55,7 +69,7 @@ describe('Agenda slot pinning', () => {
 
   it('ignores a drop that does not carry a checklist item', () => {
     const update = vi.fn();
-    render(<Agenda agenda={{}} checkItems={[item()]} update={update} currentHour={null} />);
+    renderAgenda({ update });
 
     fireEvent.drop(rowForHour(6), { dataTransfer: { types: ['text/plain'], getData: () => '' } });
 
@@ -64,9 +78,7 @@ describe('Agenda slot pinning', () => {
 
   it('unpins an item when its chip ✕ is clicked', async () => {
     const update = vi.fn();
-    render(
-      <Agenda agenda={{}} checkItems={[item({ slot: 6 })]} update={update} currentHour={null} />,
-    );
+    renderAgenda({ checkItems: [item({ slot: 6 })], update });
 
     await userEvent.click(screen.getByLabelText('Unpin "Dit is een test"'));
 
@@ -75,9 +87,7 @@ describe('Agenda slot pinning', () => {
 
   it('toggles done from the chip checkbox', async () => {
     const update = vi.fn();
-    render(
-      <Agenda agenda={{}} checkItems={[item({ slot: 6 })]} update={update} currentHour={null} />,
-    );
+    renderAgenda({ checkItems: [item({ slot: 6 })], update });
 
     await userEvent.click(screen.getByLabelText('Toggle "Dit is een test"'));
 

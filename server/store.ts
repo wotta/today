@@ -65,7 +65,9 @@ function gistPersistence(): Persistence {
 
 function hasContent(e: DayEntry): boolean {
   if (e.checkItems.length > 0) return true;
-  return Object.values(e.agenda).some((t) => t.trim() !== '');
+  if (e.agenda && Object.values(e.agenda).some((t) => t.trim() !== '')) return true;
+  if (e.note && e.note.trim() !== '') return true;
+  return Object.values(e.slotNotes ?? {}).some((t) => t.trim() !== '');
 }
 
 class Store extends EventEmitter {
@@ -201,6 +203,44 @@ class Store extends EventEmitter {
           return ra - rb;
         });
         day.checkItems = ordered.map((it, i) => ({ ...it, order: i }));
+        return day;
+      },
+      null,
+    ) as Promise<DayEntry>;
+  }
+
+  /** Set the day's freeform markdown note; empty text clears it. */
+  setNote(date: string, text: string): Promise<DayEntry> {
+    return this.mutate(
+      date,
+      (day) => {
+        if (text.trim() === '') {
+          delete day.note;
+        } else {
+          day.note = text;
+        }
+        return day;
+      },
+      null,
+    ) as Promise<DayEntry>;
+  }
+
+  /** Set the markdown note for an agenda hour; empty text clears it. */
+  setSlotNote(date: string, hour: number, text: string): Promise<DayEntry> {
+    return this.mutate(
+      date,
+      (day) => {
+        const notes = { ...(day.slotNotes ?? {}) };
+        if (text.trim() === '') {
+          delete notes[hour];
+        } else {
+          notes[hour] = text;
+        }
+        if (Object.keys(notes).length === 0) {
+          delete day.slotNotes;
+        } else {
+          day.slotNotes = notes;
+        }
         return day;
       },
       null,

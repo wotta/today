@@ -16,6 +16,10 @@ export interface DayEntry {
   checkItems: CheckItem[];
   /** Hour (6–26, where 24=midnight, 25=1am, 26=2am) -> free text. */
   agenda: Record<number, string>;
+  /** Freeform markdown note for the whole day. */
+  note?: string;
+  /** Hour (6–26) -> markdown note, keyed like agenda. */
+  slotNotes?: Record<number, string>;
 }
 
 /** First and last hour shown in the agenda (Japanese-planner style 6:00 → 26:00). */

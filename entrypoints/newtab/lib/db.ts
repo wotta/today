@@ -30,7 +30,9 @@ export async function getDay(date: string): Promise<DayEntry> {
 /** True once a day has any content worth persisting. */
 function hasContent(entry: DayEntry): boolean {
   if (entry.checkItems.length > 0) return true;
-  return Object.values(entry.agenda).some((text) => text.trim() !== '');
+  if (Object.values(entry.agenda).some((text) => text.trim() !== '')) return true;
+  if (entry.note && entry.note.trim() !== '') return true;
+  return Object.values(entry.slotNotes ?? {}).some((text) => text.trim() !== '');
 }
 
 /**

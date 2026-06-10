@@ -35,8 +35,9 @@ export function buildMcpServer(): McpServer {
     { name: 'today', version: '0.1.0' },
     {
       instructions:
-        'Read and write the "Today" planner. Each day has a checklist ("Check") and an ' +
-        'hourly agenda spanning hours 6–26 (24/25/26 = 0/1/2am the next morning). ' +
+        'Read and write the "Today" planner. Each day has a checklist ("Check"), an ' +
+        'hourly agenda spanning hours 6–26 (24/25/26 = 0/1/2am the next morning), and ' +
+        'markdown notes: one freeform note per day plus an optional note per agenda hour. ' +
         'Date arguments are YYYY-MM-DD in local time and default to today when omitted.',
     },
   );
@@ -46,8 +47,8 @@ export function buildMcpServer(): McpServer {
     {
       title: 'Get day',
       description:
-        'Fetch the full checklist and agenda for a day. Defaults to today. ' +
-        'Returns { date, checkItems[], agenda{ hour: text } }.',
+        'Fetch the full checklist, agenda, and notes for a day. Defaults to today. ' +
+        'Returns { date, checkItems[], agenda{ hour: text }, note?, slotNotes?{ hour: markdown } }.',
       inputSchema: { date: dateArg },
     },
     async ({ date }) => ok(await store.getDay(resolve(date))),
@@ -155,6 +156,39 @@ export function buildMcpServer(): McpServer {
     async ({ date, hour, text }) => {
       if (!isValidHour(hour)) return fail(`Hour must be ${AGENDA_START_HOUR}–${AGENDA_END_HOUR}.`);
       return ok(await store.setAgenda(resolve(date), hour, text));
+    },
+  );
+
+  server.registerTool(
+    'set_note',
+    {
+      title: 'Set day note',
+      description:
+        "Set the day's freeform markdown note. Passing empty text clears it. Returns the updated day.",
+      inputSchema: {
+        date: dateArg,
+        text: z.string().describe('Markdown note content (empty clears it).'),
+      },
+    },
+    async ({ date, text }) => ok(await store.setNote(resolve(date), text)),
+  );
+
+  server.registerTool(
+    'set_slot_note',
+    {
+      title: 'Set hour note',
+      description:
+        'Set the markdown note attached to a given agenda hour. Passing empty text clears it. ' +
+        'Returns the updated day.',
+      inputSchema: {
+        date: dateArg,
+        hour: hourArg,
+        text: z.string().describe('Markdown note content (empty clears it).'),
+      },
+    },
+    async ({ date, hour, text }) => {
+      if (!isValidHour(hour)) return fail(`Hour must be ${AGENDA_START_HOUR}–${AGENDA_END_HOUR}.`);
+      return ok(await store.setSlotNote(resolve(date), hour, text));
     },
   );
 

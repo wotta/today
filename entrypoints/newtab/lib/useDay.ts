@@ -12,6 +12,8 @@ export interface UseDay {
   online: boolean;
   /** Apply an immutable update to the current day; triggers a debounced save. */
   update: (mutate: (prev: DayEntry) => DayEntry) => void;
+  /** Set each time a (debounced) save completes; `online` is the result of that save. */
+  lastSaved: { at: number; online: boolean } | null;
 }
 
 /**
@@ -25,6 +27,7 @@ export function useDay(date: string): UseDay {
   const [entry, setEntry] = useState<DayEntry>(() => emptyDay(date));
   const [loading, setLoading] = useState(true);
   const [online, setOnline] = useState(false);
+  const [lastSaved, setLastSaved] = useState<UseDay['lastSaved']>(null);
 
   const dateRef = useRef(date);
   dateRef.current = date;
@@ -44,12 +47,15 @@ export function useDay(date: string): UseDay {
   const persist = useCallback(
     async (next: DayEntry) => {
       await saveCache(next);
+      let serverOk = true;
       try {
         await api.putDay(next);
         markOnline(true);
       } catch {
+        serverOk = false;
         markOnline(false);
       }
+      setLastSaved({ at: Date.now(), online: serverOk });
     },
     [markOnline],
   );
@@ -171,5 +177,5 @@ export function useDay(date: string): UseDay {
     [persist],
   );
 
-  return { entry, loading, online, update };
+  return { entry, loading, online, update, lastSaved };
 }
