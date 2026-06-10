@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useDay } from '../lib/useDay';
 import { closeNote } from '../lib/route';
 import { formatLongDate, hourLabel } from '../lib/date';
@@ -18,9 +18,20 @@ interface Props {
  * visible). A collapsible right rail shows read-only context: the slot's
  * agenda line and pinned todos, or day-level context.
  */
+const SAVED_FLASH_MS = 2000;
+
 export function NotePage({ date, hour }: Props) {
-  const { entry, update, online } = useDay(date);
+  const { entry, update, lastSaved } = useDay(date);
   const [railOpen, setRailOpen] = useState(false);
+
+  // Flash the save indicator when a (debounced) save completes, then fade out.
+  const [showSaved, setShowSaved] = useState(false);
+  useEffect(() => {
+    if (!lastSaved) return;
+    setShowSaved(true);
+    const timer = setTimeout(() => setShowSaved(false), SAVED_FLASH_MS);
+    return () => clearTimeout(timer);
+  }, [lastSaved]);
 
   const value = hour === undefined ? (entry.note ?? '') : (entry.slotNotes?.[hour] ?? '');
   const setValue = (text: string) =>
@@ -56,10 +67,14 @@ export function NotePage({ date, hour }: Props) {
             )}
           </h1>
           <span
-            className="ml-auto select-none text-[11px] text-stone-300 dark:text-stone-600"
-            title={online ? 'Synced with the helper server' : 'Saved locally'}
+            aria-hidden={!showSaved}
+            className={
+              'ml-auto select-none text-[11px] text-stone-300 transition-opacity duration-500 dark:text-stone-600 ' +
+              (showSaved ? 'opacity-100' : 'opacity-0')
+            }
+            title={lastSaved?.online ? 'Synced with the helper server' : 'Saved locally'}
           >
-            {online ? 'saved ✓' : 'saved locally'}
+            {lastSaved?.online ? 'saved ✓' : 'saved locally'}
           </span>
           <button
             type="button"

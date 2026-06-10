@@ -9,7 +9,7 @@ const h = vi.hoisted(() => ({
 }));
 
 vi.mock('../entrypoints/newtab/lib/useDay', () => ({
-  useDay: () => ({ entry: h.entry, update: h.update, online: true, loading: false }),
+  useDay: () => ({ entry: h.entry, update: h.update, online: true, loading: false, lastSaved: null }),
 }));
 
 import { NotePage } from '../entrypoints/newtab/components/NotePage';

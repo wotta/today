@@ -15,7 +15,7 @@ const h = vi.hoisted(() => ({
 }));
 
 vi.mock('../entrypoints/newtab/lib/useDay', () => ({
-  useDay: () => ({ entry: h.entry, update: vi.fn(), online: true, loading: false }),
+  useDay: () => ({ entry: h.entry, update: vi.fn(), online: true, loading: false, lastSaved: null }),
 }));
 vi.mock('../entrypoints/newtab/lib/backend', () => ({
   isGistActive: () => Promise.resolve(false),
