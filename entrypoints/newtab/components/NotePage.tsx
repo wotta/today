@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useDay } from '../lib/useDay';
 import { closeNote } from '../lib/route';
+import { withNote } from '../lib/notes';
 import { formatLongDate, hourLabel } from '../lib/date';
 import type { CheckItem } from '../lib/types';
 import { MarkdownEditor } from './MarkdownEditor';
@@ -34,12 +35,7 @@ export function NotePage({ date, hour }: Props) {
   }, [lastSaved]);
 
   const value = hour === undefined ? (entry.note ?? '') : (entry.slotNotes?.[hour] ?? '');
-  const setValue = (text: string) =>
-    update((prev) =>
-      hour === undefined
-        ? { ...prev, note: text }
-        : { ...prev, slotNotes: { ...prev.slotNotes, [hour]: text } },
-    );
+  const setValue = (text: string) => update((prev) => withNote(prev, hour, text));
 
   const pinned =
     hour === undefined ? [] : entry.checkItems.filter((it) => it.slot === hour);
