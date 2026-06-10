@@ -14,8 +14,10 @@ import type { ReactNode } from 'react';
  * (light/dark) drives the whole sheet; opacity differentiates the three tiers.
  */
 
-/** Baseline spacing (px). Thirds fall at ROW/3 and 2·ROW/3. */
-const ROW = 28;
+/** Baseline spacing (px). Thirds fall at ROW/3 and 2·ROW/3. Text on the sheet
+ * should use this as its line-height so lines sit on the ruling. */
+export const SHEET_ROW = 28;
+const ROW = SHEET_ROW;
 /**
  * Vertical guide spacing (px). In the source notebook the paragraph guides sit
  * roughly every 3 ruled rows — much wider than the line height — so the page

@@ -1,4 +1,4 @@
-# Rich Notes (#5) — Work Handoff
+respo# Rich Notes (#5) — Work Handoff
 
 **Date:** 2026-06-10
 **Branch:** `feature/rich-notes`
@@ -40,8 +40,8 @@ message; don't push unless I ask.
 | Step | What | State |
 |---|---|---|
 | 1 | Model + persistence (`note`/`slotNotes` strings, Zod, `hasContent`, tests) | ✅ done & committed (`a2c49d5`) |
-| 2 | `<RuledSheet>` — Logical Note CSS surface | 🟡 first pass committed, **needs visual tuning** |
-| 3 | Hash router (planner ↔ note view, back + scroll restore, page-turn) | ⬜ not started |
+| 2 | `<RuledSheet>` — Logical Note CSS surface | ✅ tuned & committed (`b7da66f`): verticals every 3 rows @ 0.12, ticks per row |
+| 3 | Hash router (planner ↔ note view, back + scroll restore, page-turn) | ✅ done: `lib/route.ts`, `NotePage` (step-3 scope: plain textarea + autosave), App switch, page-turn CSS, route tests. Verified in served build. |
 | 4 | Note page (top bar, collapsible right rail, live-preview markdown, autosave) | ⬜ not started |
 | 5 | Entry points (header "Notes" btn, hover ✎ + dot on agenda rows, variant flag) | ⬜ not started |
 | 6 | *(follow-up)* MCP write tools `set_note` / `set_slot_note` | ⬜ deferred |

@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DateHeader } from './components/DateHeader';
 import { Checklist } from './components/Checklist';
 import { Agenda } from './components/Agenda';
+import { NotePage } from './components/NotePage';
 import { ThemeToggle } from './components/ThemeToggle';
 import { SyncStatus } from './components/SyncStatus';
 import { ConnectButton } from './components/ConnectButton';
 import { ImportExport } from './components/ImportExport';
 import { useDay } from './lib/useDay';
 import { isGistActive } from './lib/backend';
+import { useRoute } from './lib/route';
 import { useTheme } from './lib/theme';
 import { useDateShortcuts } from './lib/useDateShortcuts';
 import { todayKey } from './lib/date';
@@ -22,6 +24,7 @@ function currentAgendaHour(date: string): number | null {
 }
 
 function App() {
+  const route = useRoute();
   const [date, setDate] = useState<string>(() => todayKey());
   const { entry, update, online } = useDay(date);
   const { theme, setTheme } = useTheme();
@@ -39,8 +42,31 @@ function App() {
     };
   }, []);
 
+  // Restore the planner's scroll position when coming back from a note page.
+  const plannerScroll = useRef(0);
+  const prevView = useRef(route.view);
+  useEffect(() => {
+    if (prevView.current === route.view) return;
+    if (route.view === 'note') {
+      plannerScroll.current = window.scrollY;
+      window.scrollTo(0, 0);
+    } else {
+      window.scrollTo(0, plannerScroll.current);
+    }
+    prevView.current = route.view;
+  }, [route.view]);
+
+  if (route.view === 'note') {
+    return (
+      <div key={`note-${route.date}-${route.hour ?? 'day'}`} className="page-turn min-h-full">
+        <NotePage date={route.date} hour={route.hour} />
+        <ThemeToggle theme={theme} setTheme={setTheme} />
+      </div>
+    );
+  }
+
   return (
-    <div className="flex min-h-full justify-center px-4 pt-10 pb-18">
+    <div key="planner" className="page-turn flex min-h-full justify-center px-4 pt-10 pb-18">
       {/* Centered notebook page */}
       <main className="w-full max-w-xl rounded-sm border border-stone-200 bg-[#fcfcfb] px-8 pb-20 pt-8 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-12px_rgba(0,0,0,0.12)] dark:border-stone-700 dark:bg-stone-900 dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_12px_32px_-12px_rgba(0,0,0,0.6)]">
         <DateHeader date={date} onDateChange={setDate} />
