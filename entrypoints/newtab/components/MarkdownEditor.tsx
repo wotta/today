@@ -17,9 +17,14 @@ import { SHEET_ROW } from './RuledSheet';
  * 28px line height, so text always sits on the ruled baselines.
  */
 
-/** Markdown source styling. Colors are mid-stone so they read on both themes. */
+/** Markdown source styling. Colors are mid-stone so they read on both themes.
+ * Heading sizes step down per level but always fit the 28px line grid. */
 const markdownHighlight = HighlightStyle.define([
-  { tag: tags.heading, fontWeight: '700', fontSize: '17px' },
+  { tag: tags.heading1, fontWeight: '700', fontSize: '21px' },
+  { tag: tags.heading2, fontWeight: '700', fontSize: '18px' },
+  { tag: tags.heading3, fontWeight: '700', fontSize: '16px' },
+  // h4–h6: body size, still bold — deeper levels rarely make sense in notes.
+  { tag: tags.heading, fontWeight: '700' },
   { tag: tags.strong, fontWeight: '700' },
   { tag: tags.emphasis, fontStyle: 'italic' },
   { tag: tags.strikethrough, textDecoration: 'line-through' },
