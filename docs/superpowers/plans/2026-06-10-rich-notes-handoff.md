@@ -44,7 +44,7 @@ message; don't push unless I ask.
 | 3 | Hash router (planner ↔ note view, back + scroll restore, page-turn) | ✅ done: `lib/route.ts`, `NotePage` (step-3 scope: plain textarea + autosave), App switch, page-turn CSS, route tests. Verified in served build. |
 | 4 | Note page (top bar, collapsible right rail, live markdown editor, autosave) | ✅ done, then **revised after review**: render-on-blur (`b4403ea`) replaced by CodeMirror 6 live styled-source editing; markdown-it removed; ruling much fainter, Date block removed |
 | 5 | Entry points (page-corner ✎ for day note, hover ✎ on agenda rows, variant flag) | ✅ done: corner ✎ placement chosen by user over header pill; App-level navigation behavior tests |
-| 6 | *(follow-up)* MCP write tools `set_note` / `set_slot_note` | ⬜ deferred |
+| 6 | MCP write tools `set_note` / `set_slot_note` | ✅ done: store.setNote/setSlotNote (empty clears; lazy cleanup), tools registered, server instructions/get_day description mention notes |
 
 Nothing is pushed. Full test suite was green at step 1 (72 passing), `tsc` clean.
 

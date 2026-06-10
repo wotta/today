@@ -209,6 +209,44 @@ class Store extends EventEmitter {
     ) as Promise<DayEntry>;
   }
 
+  /** Set the day's freeform markdown note; empty text clears it. */
+  setNote(date: string, text: string): Promise<DayEntry> {
+    return this.mutate(
+      date,
+      (day) => {
+        if (text.trim() === '') {
+          delete day.note;
+        } else {
+          day.note = text;
+        }
+        return day;
+      },
+      null,
+    ) as Promise<DayEntry>;
+  }
+
+  /** Set the markdown note for an agenda hour; empty text clears it. */
+  setSlotNote(date: string, hour: number, text: string): Promise<DayEntry> {
+    return this.mutate(
+      date,
+      (day) => {
+        const notes = { ...(day.slotNotes ?? {}) };
+        if (text.trim() === '') {
+          delete notes[hour];
+        } else {
+          notes[hour] = text;
+        }
+        if (Object.keys(notes).length === 0) {
+          delete day.slotNotes;
+        } else {
+          day.slotNotes = notes;
+        }
+        return day;
+      },
+      null,
+    ) as Promise<DayEntry>;
+  }
+
   setAgenda(date: string, hour: number, text: string): Promise<DayEntry> {
     return this.mutate(
       date,

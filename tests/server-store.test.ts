@@ -78,6 +78,21 @@ describe('file mode', () => {
     expect(await store.listDays()).toEqual([]);
   });
 
+  it('sets and clears notes via setNote/setSlotNote, dropping empty days', async () => {
+    await store.setNote('2026-06-08', 'plan the week');
+    await store.setSlotNote('2026-06-08', 9, 'standup agenda');
+
+    const day = await store.getDay('2026-06-08');
+    expect(day.note).toBe('plan the week');
+    expect(day.slotNotes).toEqual({ 9: 'standup agenda' });
+
+    await store.setNote('2026-06-08', '');
+    await store.setSlotNote('2026-06-08', 9, '');
+    // Both cleared -> the whole day is gone (lazy cleanup), with no
+    // empty note/slotNotes fields left behind.
+    expect(await store.listDays()).toEqual([]);
+  });
+
   it('pins a checklist item to an hour and clears it again', async () => {
     const created = await store.addCheckItem('2026-06-08', 'standup');
 
