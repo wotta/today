@@ -20,7 +20,8 @@ export default defineConfig({
       'https://api.github.com/*',
     ],
     // `storage` holds the Gist PAT + id (chrome.storage.local).
-    permissions: ['contextMenus', 'sidePanel', 'storage'],
+    // `alarms` + `notifications` power the slot reminders in the background script.
+    permissions: ['contextMenus', 'sidePanel', 'storage', 'alarms', 'notifications'],
   },
   vite: () => ({
     plugins: [tailwindcss()],
