@@ -22,6 +22,8 @@ const h = vi.hoisted(() => {
     getGistConfig: vi.fn(async () => null as null | { pat: string; gistId: string }),
     setGistConfig: vi.fn(async () => {}),
     clearGistConfig: vi.fn(async () => {}),
+    getRemindersEnabled: vi.fn(async () => true),
+    setRemindersEnabled: vi.fn(async () => {}),
   };
 });
 
@@ -35,6 +37,8 @@ vi.mock('../entrypoints/newtab/lib/settings', () => ({
   getGistConfig: h.getGistConfig,
   setGistConfig: h.setGistConfig,
   clearGistConfig: h.clearGistConfig,
+  getRemindersEnabled: h.getRemindersEnabled,
+  setRemindersEnabled: h.setRemindersEnabled,
 }));
 
 import { OptionsApp } from '../entrypoints/options/OptionsApp';

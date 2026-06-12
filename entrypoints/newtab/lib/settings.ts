@@ -35,3 +35,15 @@ export async function setGistConfig(config: GistConfig): Promise<void> {
 export async function clearGistConfig(): Promise<void> {
   await browser.storage.local.remove([PAT_KEY, GIST_ID_KEY]);
 }
+
+const REMINDERS_KEY = 'remindersEnabled';
+
+/** Whether slot reminders fire. Defaults to on; the options page can disable them. */
+export async function getRemindersEnabled(): Promise<boolean> {
+  const stored = await browser.storage.local.get([REMINDERS_KEY]);
+  return stored[REMINDERS_KEY] !== false;
+}
+
+export async function setRemindersEnabled(enabled: boolean): Promise<void> {
+  await browser.storage.local.set({ [REMINDERS_KEY]: enabled });
+}

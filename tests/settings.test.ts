@@ -26,7 +26,9 @@ vi.mock('wxt/browser', () => ({
 import {
   clearGistConfig,
   getGistConfig,
+  getRemindersEnabled,
   setGistConfig,
+  setRemindersEnabled,
 } from '../entrypoints/newtab/lib/settings';
 
 beforeEach(() => {
@@ -59,5 +61,18 @@ describe('setGistConfig / clearGistConfig', () => {
     await setGistConfig({ pat: 'tok', gistId: 'abc123' });
     await clearGistConfig();
     expect(await getGistConfig()).toBeNull();
+  });
+});
+
+describe('reminders setting', () => {
+  it('defaults to enabled', async () => {
+    expect(await getRemindersEnabled()).toBe(true);
+  });
+
+  it('round-trips through storage', async () => {
+    await setRemindersEnabled(false);
+    expect(await getRemindersEnabled()).toBe(false);
+    await setRemindersEnabled(true);
+    expect(await getRemindersEnabled()).toBe(true);
   });
 });

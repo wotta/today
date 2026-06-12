@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import {
   clearGistConfig,
   getGistConfig,
+  getRemindersEnabled,
   setGistConfig,
+  setRemindersEnabled,
 } from '../newtab/lib/settings';
 import { GistError, createGist, findGistWithData, verifyGist } from '../newtab/lib/gist';
 import { SERVER_BASE } from '../newtab/lib/api';
@@ -54,6 +56,7 @@ export function OptionsApp() {
   const [pat, setPat] = useState('');
   const [gistId, setGistId] = useState('');
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
+  const [reminders, setReminders] = useState(true);
 
   // Pre-fill from any existing config.
   useEffect(() => {
@@ -63,7 +66,13 @@ export function OptionsApp() {
       setGistId(config.gistId);
       setStatus({ kind: 'connected', gistId: config.gistId });
     });
+    void getRemindersEnabled().then(setReminders);
   }, []);
+
+  const toggleReminders = (enabled: boolean) => {
+    setReminders(enabled);
+    void setRemindersEnabled(enabled);
+  };
 
   const save = async () => {
     const trimmedPat = pat.trim();
@@ -169,6 +178,23 @@ export function OptionsApp() {
         </form>
 
         <StatusLine status={status} />
+
+        <section className="mt-6 border-t border-stone-200 pt-5 dark:border-stone-700">
+          <h2 className="text-lg font-semibold tracking-tight">Reminders</h2>
+          <p className="mt-1 text-[13px] leading-snug text-stone-500 dark:text-stone-400">
+            Get a browser notification 10 minutes before an agenda slot with unfinished
+            checklist items.
+          </p>
+          <label className="mt-3 flex items-center gap-2 text-[13px] font-medium">
+            <input
+              type="checkbox"
+              checked={reminders}
+              onChange={(e) => toggleReminders(e.target.checked)}
+              className="h-4 w-4 accent-stone-800 dark:accent-stone-100"
+            />
+            Notify me before scheduled items
+          </label>
+        </section>
       </main>
     </div>
   );
