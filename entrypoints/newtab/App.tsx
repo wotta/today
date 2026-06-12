@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { DateHeader } from './components/DateHeader';
 import { Checklist } from './components/Checklist';
 import { Agenda } from './components/Agenda';
-import { NotePage } from './components/NotePage';
 import { ThemeToggle } from './components/ThemeToggle';
 import { SyncStatus } from './components/SyncStatus';
 import { ConnectButton } from './components/ConnectButton';
@@ -14,6 +13,12 @@ import { useTheme } from './lib/theme';
 import { useDateShortcuts } from './lib/useDateShortcuts';
 import { todayKey } from './lib/date';
 import { AGENDA_END_HOUR, AGENDA_START_HOUR } from './lib/types';
+
+// The note page pulls in CodeMirror (most of the bundle's weight); load it on
+// demand so opening a new tab only parses the planner view.
+const NotePage = lazy(() =>
+  import('./components/NotePage').then((m) => ({ default: m.NotePage })),
+);
 
 /** The "now" agenda hour for today, mapping 0–2am into the 24–26 range; null if out of range. */
 function currentAgendaHour(date: string): number | null {
@@ -59,7 +64,9 @@ function App() {
   if (route.view === 'note') {
     return (
       <div key={`note-${route.date}-${route.hour ?? 'day'}`} className="page-turn min-h-full">
-        <NotePage date={route.date} hour={route.hour} />
+        <Suspense fallback={null}>
+          <NotePage date={route.date} hour={route.hour} />
+        </Suspense>
         <ThemeToggle theme={theme} setTheme={setTheme} />
       </div>
     );
