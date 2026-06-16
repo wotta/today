@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import type { CheckItem, DayEntry } from '../lib/types';
 import { ITEM_DRAG_MIME } from '../lib/types';
 import { hourLabel } from '../lib/date';
+import { CheckItemDialog } from './CheckItemDialog';
 
 interface Props {
   items: CheckItem[];
@@ -20,7 +21,9 @@ function sorted(items: CheckItem[]): CheckItem[] {
 export function Checklist({ items, update }: Props) {
   const [draft, setDraft] = useState('');
   const [dragId, setDragId] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
   const list = sorted(items);
+  const openItem = items.find((it) => it.id === openId) ?? null;
 
   const addItem = () => {
     const text = draft.trim();
@@ -45,6 +48,12 @@ export function Checklist({ items, update }: Props) {
     update((prev) => ({
       ...prev,
       checkItems: prev.checkItems.map((it) => (it.id === id ? { ...it, text } : it)),
+    }));
+
+  const patch = (id: string, p: { text?: string; description?: string; done?: boolean }) =>
+    update((prev) => ({
+      ...prev,
+      checkItems: prev.checkItems.map((it) => (it.id === id ? { ...it, ...p } : it)),
     }));
 
   const remove = (id: string) =>
@@ -130,6 +139,20 @@ export function Checklist({ items, update }: Props) {
             )}
             <button
               type="button"
+              aria-label={`View "${item.text}"`}
+              title={item.description ? 'Has a description' : 'View details'}
+              onClick={() => setOpenId(item.id)}
+              className={
+                'shrink-0 px-1 transition-opacity ' +
+                (item.description
+                  ? 'text-amber-600 dark:text-amber-400'
+                  : 'text-stone-300 opacity-0 hover:text-stone-600 focus-visible:opacity-100 group-hover:opacity-100 dark:text-stone-600 dark:hover:text-stone-300')
+              }
+            >
+              ⤢
+            </button>
+            <button
+              type="button"
               aria-label="Delete item"
               onClick={() => remove(item.id)}
               className="px-1 text-stone-300 opacity-0 transition-opacity hover:text-stone-600 group-hover:opacity-100 dark:text-stone-600 dark:hover:text-stone-300"
@@ -141,6 +164,14 @@ export function Checklist({ items, update }: Props) {
       </ul>
 
       <AddRow draft={draft} setDraft={setDraft} onAdd={addItem} empty={list.length === 0} />
+
+      {openItem && (
+        <CheckItemDialog
+          item={openItem}
+          onChange={(p) => patch(openItem.id, p)}
+          onClose={() => setOpenId(null)}
+        />
+      )}
     </section>
   );
 }

@@ -93,4 +93,24 @@ describe('Agenda slot pinning', () => {
 
     expect(applied(update, day({ checkItems: [item({ slot: 6 })] })).checkItems[0].done).toBe(true);
   });
+
+  it('opens the view dialog from the chip and shows the full title', async () => {
+    renderAgenda({ checkItems: [item({ slot: 6 })] });
+
+    await userEvent.click(screen.getByLabelText('View "Dit is een test"'));
+
+    expect(screen.getByLabelText('Title')).toHaveValue('Dit is een test');
+  });
+
+  it('persists a description edited in the dialog', async () => {
+    const update = vi.fn();
+    renderAgenda({ checkItems: [item({ slot: 6 })], update });
+
+    await userEvent.click(screen.getByLabelText('View "Dit is een test"'));
+    await userEvent.type(screen.getByLabelText('Description'), 'x');
+
+    expect(
+      applied(update, day({ checkItems: [item({ slot: 6 })] })).checkItems[0].description,
+    ).toBe('x');
+  });
 });

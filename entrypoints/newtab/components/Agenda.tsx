@@ -4,6 +4,7 @@ import { AGENDA_END_HOUR, AGENDA_START_HOUR, ITEM_DRAG_MIME } from '../lib/types
 import { hourLabel, isLateNight } from '../lib/date';
 import { PER_SLOT_NOTES } from '../lib/flags';
 import { noteHash } from '../lib/route';
+import { CheckItemDialog } from './CheckItemDialog';
 
 interface Props {
   date: string;
@@ -24,6 +25,9 @@ const HOURS = Array.from(
 export function Agenda({ date, agenda, checkItems, slotNotes, update, currentHour }: Props) {
   // The hour currently hovered during a drag, for a drop-target highlight.
   const [dropHour, setDropHour] = useState<number | null>(null);
+  // The item whose view/edit dialog is open, if any.
+  const [openId, setOpenId] = useState<string | null>(null);
+  const openItem = checkItems.find((it) => it.id === openId) ?? null;
 
   const setHour = (hour: number, text: string) =>
     update((prev) => ({ ...prev, agenda: { ...prev.agenda, [hour]: text } }));
@@ -49,6 +53,12 @@ export function Agenda({ date, agenda, checkItems, slotNotes, update, currentHou
       checkItems: prev.checkItems.map((it) =>
         it.id === id ? { ...it, done: !it.done } : it,
       ),
+    }));
+
+  const patch = (id: string, p: { text?: string; description?: string; done?: boolean }) =>
+    update((prev) => ({
+      ...prev,
+      checkItems: prev.checkItems.map((it) => (it.id === id ? { ...it, ...p } : it)),
     }));
 
   // Group pinned items by their slot so each hour can render its chips.
@@ -113,7 +123,7 @@ export function Agenda({ date, agenda, checkItems, slotNotes, update, currentHou
               >
                 {even ? hourLabel(hour) : ''}
               </span>
-              <div className="flex min-h-[34px] flex-1 flex-col justify-center py-1">
+              <div className="flex min-h-[34px] min-w-0 flex-1 flex-col justify-center py-1">
                 <div className="flex items-center">
                   <input
                     value={agenda[hour] ?? ''}
@@ -148,6 +158,7 @@ export function Agenda({ date, agenda, checkItems, slotNotes, update, currentHou
                         item={item}
                         onToggle={() => toggle(item.id)}
                         onUnpin={() => unpin(item.id)}
+                        onView={() => setOpenId(item.id)}
                       />
                     ))}
                   </div>
@@ -159,6 +170,13 @@ export function Agenda({ date, agenda, checkItems, slotNotes, update, currentHou
         {/* Closing line beneath the final hour */}
         <li className="border-t border-stone-300 dark:border-stone-700" aria-hidden />
       </ul>
+      {openItem && (
+        <CheckItemDialog
+          item={openItem}
+          onChange={(p) => patch(openItem.id, p)}
+          onClose={() => setOpenId(null)}
+        />
+      )}
     </section>
   );
 }
@@ -167,10 +185,12 @@ function Chip({
   item,
   onToggle,
   onUnpin,
+  onView,
 }: {
   item: CheckItem;
   onToggle: () => void;
   onUnpin: () => void;
+  onView: () => void;
 }) {
   return (
     <span
@@ -181,7 +201,9 @@ function Chip({
         e.dataTransfer.effectAllowed = 'move';
       }}
       className={
-        'group/chip inline-flex max-w-full cursor-grab items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 py-0.5 pl-1.5 pr-1 text-[13px] dark:border-amber-400/20 dark:bg-amber-400/10 ' +
+        // min-w-0 lets this flex item shrink below its content width so the
+        // label inside can truncate instead of overflowing the agenda row.
+        'group/chip inline-flex min-w-0 max-w-full cursor-grab items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 py-0.5 pl-1.5 pr-1 text-[13px] dark:border-amber-400/20 dark:bg-amber-400/10 ' +
         (item.done ? 'opacity-60' : '')
       }
     >
@@ -194,7 +216,9 @@ function Chip({
       />
       <span
         className={
-          'truncate ' +
+          // min-w-0 lets the label shrink so `truncate` can ellipsize instead of
+          // pushing the chip past the agenda row.
+          'min-w-0 truncate ' +
           (item.done
             ? 'text-amber-700/60 line-through dark:text-amber-300/50'
             : 'text-amber-800 dark:text-amber-200')
@@ -202,6 +226,15 @@ function Chip({
       >
         {item.text}
       </span>
+      <button
+        type="button"
+        aria-label={`View "${item.text}"`}
+        title="View details"
+        onClick={onView}
+        className="shrink-0 rounded-full px-0.5 text-amber-500/70 hover:text-amber-700 dark:text-amber-300/60 dark:hover:text-amber-200"
+      >
+        ⤢
+      </button>
       <button
         type="button"
         aria-label={`Unpin "${item.text}"`}
