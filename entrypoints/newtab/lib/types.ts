@@ -3,6 +3,8 @@ export interface CheckItem {
   text: string;
   done: boolean;
   order: number;
+  /** Optional long-form detail shown in the item's view/edit modal. */
+  description?: string;
   /** Optional agenda hour (6–26) this item is pinned to. Absent = unpinned. */
   slot?: number;
 }
