@@ -53,6 +53,12 @@ body {
   }
 }
 
+/* Let the BlockNote description editor fill its taller box, so the whole area
+   is clickable and typeable like the textarea it replaced. */
+.today-rich-description .bn-editor {
+  min-height: 11rem;
+}
+
 /* Hide number input spinners; keep inputs flush with the paper look. */
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {

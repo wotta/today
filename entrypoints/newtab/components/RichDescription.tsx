@@ -90,7 +90,7 @@ export default function RichDescription({ value, onChange, ariaLabel }: Props) {
       }}
       onBlur={handleBlur}
       className={
-        'today-rich-description mt-4 w-full rounded-lg border text-[15px] leading-relaxed outline-none ' +
+        'today-rich-description mt-4 min-h-[12rem] w-full rounded-lg border py-1 text-[15px] leading-relaxed outline-none ' +
         (editing
           ? 'border-stone-300 dark:border-stone-600'
           : 'cursor-text border-stone-200 dark:border-stone-700') +
