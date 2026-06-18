@@ -1,7 +1,12 @@
-import { useLayoutEffect, useRef } from 'react';
+import { Suspense, lazy, useLayoutEffect, useRef } from 'react';
 import { hourLabel } from '../lib/date';
 import type { CheckItem } from '../lib/types';
 import { Modal } from './Modal';
+
+// BlockNote (and its ProseMirror deps) are the heaviest part of the editor and
+// are only needed once a check item is opened — lazy-load them so the planner
+// view stays light.
+const RichDescription = lazy(() => import('./RichDescription'));
 
 interface Props {
   item: CheckItem;
@@ -63,14 +68,23 @@ export function CheckItemDialog({ item, onChange, onClose }: Props) {
         </p>
       )}
 
-      <textarea
-        aria-label="Description"
-        value={item.description ?? ''}
-        onChange={(e) => onChange({ description: e.target.value })}
-        placeholder="Add a description…"
-        rows={8}
-        className="mt-4 w-full resize-y rounded-lg border border-stone-200 bg-stone-50 p-3 text-[15px] leading-relaxed text-stone-700 outline-none placeholder:text-stone-300 focus:border-stone-300 dark:border-stone-700 dark:bg-stone-900/40 dark:text-stone-200 dark:placeholder:text-stone-600"
-      />
+      <Suspense
+        fallback={
+          <p className="mt-4 w-full rounded-lg border border-stone-200 bg-stone-50 p-3 text-[15px] leading-relaxed whitespace-pre-wrap text-stone-700 dark:border-stone-700 dark:bg-stone-900/40 dark:text-stone-200">
+            {item.description?.trim() ? (
+              item.description
+            ) : (
+              <span className="text-stone-300 dark:text-stone-600">Add a description…</span>
+            )}
+          </p>
+        }
+      >
+        <RichDescription
+          value={item.description ?? ''}
+          onChange={(description) => onChange({ description })}
+          ariaLabel="Description"
+        />
+      </Suspense>
     </Modal>
   );
 }

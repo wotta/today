@@ -4,6 +4,24 @@ import { describe, expect, it, vi } from 'vitest';
 import { CheckItemDialog } from '../entrypoints/newtab/components/CheckItemDialog';
 import type { CheckItem } from '../entrypoints/newtab/lib/types';
 
+// The real description editor lazy-loads BlockNote (ProseMirror), which doesn't
+// run under jsdom; its own behaviour is covered in RichDescription.test.tsx.
+// Here we stub it with a plain textarea so we can assert how the dialog wires
+// the stored markdown in and persisted markdown back out.
+vi.mock('../entrypoints/newtab/components/RichDescription', () => ({
+  default: ({
+    value,
+    onChange,
+    ariaLabel,
+  }: {
+    value: string;
+    onChange: (markdown: string) => void;
+    ariaLabel: string;
+  }) => (
+    <textarea aria-label={ariaLabel} value={value} onChange={(e) => onChange(e.target.value)} />
+  ),
+}));
+
 const item = (over: Partial<CheckItem> = {}): CheckItem => ({
   id: 'a',
   text: 'Ticket aanmaken voor EA settings pagina',
@@ -19,11 +37,11 @@ function renderDialog(props: Partial<React.ComponentProps<typeof CheckItemDialog
 }
 
 describe('CheckItemDialog', () => {
-  it('shows the full title and description', () => {
+  it('shows the full title and description', async () => {
     renderDialog({ item: item({ description: 'long form detail here' }) });
 
     expect(screen.getByLabelText('Title')).toHaveValue('Ticket aanmaken voor EA settings pagina');
-    expect(screen.getByLabelText('Description')).toHaveValue('long form detail here');
+    expect(await screen.findByLabelText('Description')).toHaveValue('long form detail here');
   });
 
   it('edits the title', async () => {
@@ -37,11 +55,11 @@ describe('CheckItemDialog', () => {
     });
   });
 
-  it('edits the description', async () => {
+  it('persists the edited description as markdown', async () => {
     const onChange = vi.fn();
     renderDialog({ onChange });
 
-    await userEvent.type(screen.getByLabelText('Description'), 'x');
+    await userEvent.type(await screen.findByLabelText('Description'), 'x');
 
     expect(onChange).toHaveBeenLastCalledWith({ description: 'x' });
   });
