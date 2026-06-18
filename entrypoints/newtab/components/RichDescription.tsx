@@ -4,12 +4,22 @@ import { BlockNoteView } from '@blocknote/mantine';
 import '@blocknote/core/fonts/inter.css';
 import '@blocknote/mantine/style.css';
 import { getUploadFile, type UploadFile } from '../lib/upload';
+import {
+  clearDescriptionDraft,
+  getDescriptionDraft,
+  setDescriptionDraft,
+} from '../lib/drafts';
 
 /**
  * Jira-style rich description: a read view that renders the stored markdown as
- * formatted content, which turns into an editable BlockNote editor the moment
- * it's focused. On blur the edited content is serialized back to markdown and
- * persisted, and the field returns to the read view.
+ * formatted content, which turns into an editable BlockNote editor when focused.
+ * Edits are committed only on an explicit Save (button or ⌘/Ctrl+Enter); Cancel
+ * discards them.
+ *
+ * Uncommitted edits are parked as a per-item draft in extension-local storage,
+ * so they survive closing the dialog or the whole new-tab page. When a draft
+ * exists the field opens straight into edit mode with an "Unsaved draft" badge,
+ * so it's always clear there's uncommitted content.
  *
  * The whole module — BlockNote and its ProseMirror deps — is lazy-loaded from
  * {@link ./CheckItemDialog}, so the planner view never pays for it.
@@ -21,27 +31,43 @@ interface Props {
   /** Called with the new markdown when an edit is saved. */
   onChange: (markdown: string) => void;
   ariaLabel: string;
+  /** Stable id (the check item id) used to key the draft in storage. */
+  draftId: string;
 }
 
+/** How long to wait after the last keystroke before parking the draft. */
+const DRAFT_DEBOUNCE_MS = 400;
+
 /**
- * Resolve whether file uploads are configured before creating the editor — the
- * upload handler is fixed at creation time, so we can't add it later. The read
- * is a single (local) storage lookup; until it resolves we render the box's
- * footprint so the dialog doesn't jump.
+ * Resolve the upload config and any saved draft before creating the editor —
+ * both are fixed at creation time (the upload handler can't be added later, and
+ * a restored draft decides whether we open in edit mode). Until the (local)
+ * storage reads resolve we render the box's footprint so the dialog doesn't jump.
  */
 export default function RichDescription(props: Props) {
-  const [upload, setUpload] = useState<{ fn: UploadFile | null } | null>(null);
+  const [boot, setBoot] = useState<{
+    uploadFile: UploadFile | null;
+    initialDraft: string | null;
+  } | null>(null);
+
   useEffect(() => {
     let active = true;
-    void getUploadFile().then((fn) => {
-      if (active) setUpload({ fn });
-    });
+    void Promise.all([getUploadFile(), getDescriptionDraft(props.draftId)]).then(
+      ([uploadFile, draft]) => {
+        if (!active) return;
+        // Only treat it as a draft if it differs from what's committed.
+        const initialDraft =
+          draft != null && draft.trimEnd() !== props.value.trimEnd() ? draft : null;
+        setBoot({ uploadFile, initialDraft });
+      },
+    );
     return () => {
       active = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- boot once per open
   }, []);
 
-  if (!upload) {
+  if (!boot) {
     return (
       <div
         aria-label={props.ariaLabel}
@@ -53,7 +79,13 @@ export default function RichDescription(props: Props) {
       </div>
     );
   }
-  return <DescriptionEditor {...props} uploadFile={upload.fn ?? undefined} />;
+  return (
+    <DescriptionEditor
+      {...props}
+      uploadFile={boot.uploadFile ?? undefined}
+      initialDraft={boot.initialDraft}
+    />
+  );
 }
 
 /** Track the app's dark mode (the `dark` class on <html>) so BlockNote's chrome
@@ -76,69 +108,81 @@ function DescriptionEditor({
   onChange,
   ariaLabel,
   uploadFile,
-}: Props & { uploadFile?: UploadFile }) {
+  draftId,
+  initialDraft,
+}: Props & { uploadFile?: UploadFile; initialDraft: string | null }) {
   const editor = useCreateBlockNote({ uploadFile });
-  const [editing, setEditing] = useState(false);
+  // A restored draft means we open mid-edit, with the badge showing.
+  const [editing, setEditing] = useState(initialDraft != null);
+  const [hasDraft, setHasDraft] = useState(initialDraft != null);
   const isDark = useIsDark();
 
   // The latest editor content as markdown, kept in sync on every keystroke so
-  // we can persist without reading the (possibly tearing-down) editor view.
-  const latestRef = useRef(value.trimEnd());
+  // we can park it without reading the (possibly tearing-down) editor view.
+  const latestRef = useRef((initialDraft ?? value).trimEnd());
 
-  // Seed the editor from the stored markdown — on mount and whenever the value
-  // changes from outside (e.g. a remote sync) while we're not actively editing,
-  // so we never clobber what the user is typing. An empty value leaves the
-  // editor's default empty paragraph in place (and avoids touching the
-  // ProseMirror view before it has mounted).
-  const seededRef = useRef<string | null>(null);
+  // BlockNote also fires onChange when the editor flips to read-only (on Save),
+  // so we gate draft writes on actually editing to avoid re-parking a draft we
+  // just committed and cleared.
+  const editingRef = useRef(editing);
+  editingRef.current = editing;
+
+  // Seed the editor once on mount — from the draft if we're resuming one, else
+  // from the stored value.
   useEffect(() => {
-    if (editing || seededRef.current === value) return;
-    const blocks = editor.tryParseMarkdownToBlocks(value);
+    const initial = initialDraft ?? value;
+    const blocks = editor.tryParseMarkdownToBlocks(initial);
     if (blocks.length) editor.replaceBlocks(editor.document, blocks);
-    seededRef.current = value;
-    latestRef.current = value.trimEnd();
-  }, [editor, value, editing]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- seed once on mount
+  }, []);
 
-  // Move focus into the editor when the user activates edit mode.
+  // Move focus into the editor when edit mode activates.
   useEffect(() => {
     if (editing) editor.focus();
   }, [editing, editor]);
 
-  // Persist the edited markdown if it actually changed. Markdown export adds a
-  // trailing newline, so compare and store trimmed to keep round-trips stable
-  // (no spurious saves). Kept in a ref so the unmount flush below always calls
-  // the current closure.
-  const persist = () => {
-    const markdown = latestRef.current;
-    if (markdown !== value.trimEnd()) onChange(markdown);
-    seededRef.current = markdown;
+  // Park (or clear) the draft. A draft equal to the committed value isn't an
+  // unsaved change, so we drop it and hide the badge.
+  const draftTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const writeDraft = (markdown: string) => {
+    if (markdown === value.trimEnd()) {
+      setHasDraft(false);
+      void clearDescriptionDraft(draftId);
+    } else {
+      setHasDraft(true);
+      void setDescriptionDraft(draftId, markdown);
+    }
   };
-  const persistRef = useRef(persist);
-  persistRef.current = persist;
-  const editingRef = useRef(editing);
-  editingRef.current = editing;
 
-  // Edits are committed only on an explicit Save (button or ⌘/Ctrl+Enter), so
-  // clicking away no longer stores anything. But if the dialog is closed while
-  // editing, flush the pending content on unmount so work is never lost.
-  useEffect(
-    () => () => {
-      if (editingRef.current) persistRef.current();
-    },
-    [],
-  );
+  // Flush the pending draft on unmount so the last keystrokes survive closing
+  // the dialog. Writes straight to storage (no setState — we're unmounting).
+  // Kept in a ref so the cleanup always runs the latest closure.
+  const flushRef = useRef<() => void>(() => {});
+  flushRef.current = () => {
+    clearTimeout(draftTimer.current);
+    if (editing && latestRef.current !== value.trimEnd()) {
+      void setDescriptionDraft(draftId, latestRef.current);
+    }
+  };
+  useEffect(() => () => flushRef.current(), []);
 
   const save = () => {
-    persist();
+    clearTimeout(draftTimer.current);
+    const markdown = latestRef.current;
+    if (markdown !== value.trimEnd()) onChange(markdown);
+    void clearDescriptionDraft(draftId);
+    setHasDraft(false);
     setEditing(false);
   };
 
-  // Discard edits: restore the editor to the stored markdown, then read mode.
+  // Discard: drop the draft and restore the editor to the committed markdown.
   const cancel = () => {
+    clearTimeout(draftTimer.current);
     const blocks = editor.tryParseMarkdownToBlocks(value);
     editor.replaceBlocks(editor.document, blocks.length ? blocks : [{ type: 'paragraph' }]);
     latestRef.current = value.trimEnd();
-    seededRef.current = value;
+    void clearDescriptionDraft(draftId);
+    setHasDraft(false);
     setEditing(false);
   };
 
@@ -176,7 +220,11 @@ function DescriptionEditor({
           editable={editing}
           theme={isDark ? 'dark' : 'light'}
           onChange={() => {
-            latestRef.current = editor.blocksToMarkdownLossy().trimEnd();
+            if (!editingRef.current) return;
+            const markdown = editor.blocksToMarkdownLossy().trimEnd();
+            latestRef.current = markdown;
+            clearTimeout(draftTimer.current);
+            draftTimer.current = setTimeout(() => writeDraft(markdown), DRAFT_DEBOUNCE_MS);
           }}
         />
       )}
@@ -197,9 +245,16 @@ function DescriptionEditor({
           >
             Cancel
           </button>
-          <span className="ml-auto select-none text-[11px] text-stone-400 dark:text-stone-500">
-            ⌘/Ctrl+Enter to save
-          </span>
+          {hasDraft ? (
+            <span className="ml-auto flex select-none items-center gap-1.5 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+              Unsaved draft
+            </span>
+          ) : (
+            <span className="ml-auto select-none text-[11px] text-stone-400 dark:text-stone-500">
+              ⌘/Ctrl+Enter to save
+            </span>
+          )}
         </div>
       )}
     </div>

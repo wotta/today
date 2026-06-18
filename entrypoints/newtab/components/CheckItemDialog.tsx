@@ -83,6 +83,7 @@ export function CheckItemDialog({ item, onChange, onClose }: Props) {
           value={item.description ?? ''}
           onChange={(description) => onChange({ description })}
           ariaLabel="Description"
+          draftId={item.id}
         />
       </Suspense>
     </Modal>
