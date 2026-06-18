@@ -65,6 +65,29 @@ describe('createUploadFile', () => {
     h.fetch.mockResolvedValue(new Response('denied', { status: 403, statusText: 'Forbidden' }));
     const upload = createUploadFile(config);
 
-    await expect(upload(new File(['x'], 'a.txt'))).rejects.toThrow(/403 Forbidden.*CORS/s);
+    await expect(upload(new File(['x'], 'a.txt'))).rejects.toThrow(/403 Forbidden/);
+  });
+
+  it('explains CORS when the request is blocked before a response', async () => {
+    h.fetch.mockRejectedValue(new TypeError('Failed to fetch'));
+    const upload = createUploadFile(config);
+
+    await expect(upload(new File(['x'], 'a.txt'))).rejects.toThrow(/CORS/);
+  });
+
+  it('avoids a double slash when the endpoint or public URL has a trailing slash', async () => {
+    h.fetch.mockResolvedValue(new Response(null, { status: 200 }));
+    const upload = createUploadFile({
+      ...config,
+      endpoint: 'https://acc.r2.cloudflarestorage.com/',
+      publicBaseUrl: 'https://pub.r2.dev/',
+    });
+
+    const url = await upload(new File(['x'], 'a.txt', { type: 'text/plain' }));
+
+    const [reqUrl] = h.fetch.mock.calls[0];
+    expect(reqUrl).not.toContain('.com//');
+    expect(reqUrl).toMatch(/^https:\/\/acc\.r2\.cloudflarestorage\.com\/files\/today\//);
+    expect(url).not.toContain('r2.dev//');
   });
 });

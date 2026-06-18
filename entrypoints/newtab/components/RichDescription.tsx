@@ -127,18 +127,23 @@ function DescriptionEditor({
   const editingRef = useRef(editing);
   editingRef.current = editing;
 
-  // Seed the editor once on mount — from the draft if we're resuming one, else
-  // from the stored value.
+  // Seed the editor from the draft (if resuming) or the stored value, and focus
+  // it if we open mid-edit. This runs via onMount — touching editor.document /
+  // replaceBlocks / focus before the ProseMirror view is mounted throws "view
+  // not available", which StrictMode's double-mount made reliable.
   useEffect(() => {
-    const initial = initialDraft ?? value;
-    const blocks = editor.tryParseMarkdownToBlocks(initial);
-    if (blocks.length) editor.replaceBlocks(editor.document, blocks);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- seed once on mount
-  }, []);
+    return editor.onMount(() => {
+      const initial = initialDraft ?? value;
+      const blocks = editor.tryParseMarkdownToBlocks(initial);
+      if (blocks.length) editor.replaceBlocks(editor.document, blocks);
+      if (editingRef.current) editor.focus();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- seed on (re)mount
+  }, [editor]);
 
-  // Move focus into the editor when edit mode activates.
+  // Focus when the user activates edit mode on an already-mounted editor.
   useEffect(() => {
-    if (editing) editor.focus();
+    if (editing && editor.domElement) editor.focus();
   }, [editing, editor]);
 
   // Park (or clear) the draft. A draft equal to the committed value isn't an
@@ -178,8 +183,10 @@ function DescriptionEditor({
   // Discard: drop the draft and restore the editor to the committed markdown.
   const cancel = () => {
     clearTimeout(draftTimer.current);
-    const blocks = editor.tryParseMarkdownToBlocks(value);
-    editor.replaceBlocks(editor.document, blocks.length ? blocks : [{ type: 'paragraph' }]);
+    if (editor.domElement) {
+      const blocks = editor.tryParseMarkdownToBlocks(value);
+      editor.replaceBlocks(editor.document, blocks.length ? blocks : [{ type: 'paragraph' }]);
+    }
     latestRef.current = value.trimEnd();
     void clearDescriptionDraft(draftId);
     setHasDraft(false);

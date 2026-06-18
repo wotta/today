@@ -27,6 +27,14 @@ const h = vi.hoisted(() => {
       listeners.forEach((l) => l());
     },
     focus: vi.fn(),
+    // The real editor only mounts its ProseMirror view once BlockNoteView is in
+    // the DOM; mirror that with a truthy domElement and an onMount that fires
+    // immediately (the view is "ready" as soon as we register).
+    domElement: {} as unknown,
+    onMount(cb: () => void) {
+      cb();
+      return () => {};
+    },
     subscribe(l: () => void) {
       listeners.add(l);
       return () => listeners.delete(l);

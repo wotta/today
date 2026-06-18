@@ -28,20 +28,35 @@ export function createUploadFile(config: S3Config): UploadFile {
     region: config.region,
     service: 's3',
   });
+  // Normalise here too: the Options form may pass an endpoint/public URL with a
+  // trailing slash (or a bucket with stray slashes), which would otherwise
+  // produce a bad `host//bucket/key` URL.
+  const endpoint = config.endpoint.replace(/\/+$/, '');
+  const bucket = config.bucket.replace(/^\/+|\/+$/g, '');
+  const publicBaseUrl = config.publicBaseUrl.replace(/\/+$/, '');
+
   return async (file: File): Promise<string> => {
     const key = objectKey(file.name);
-    const res = await client.fetch(`${config.endpoint}/${config.bucket}/${key}`, {
-      method: 'PUT',
-      body: file,
-      headers: { 'Content-Type': file.type || 'application/octet-stream' },
-    });
-    if (!res.ok) {
+    let res: Response;
+    try {
+      res = await client.fetch(`${endpoint}/${bucket}/${key}`, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+      });
+    } catch {
+      // A CORS-blocked or unreachable endpoint rejects before any response.
       throw new Error(
-        `Upload failed (${res.status} ${res.statusText}). Check the bucket name, ` +
-          'credentials, and that the bucket CORS policy allows PUT from this extension.',
+        "Could not reach the bucket. This is almost always CORS — add this extension's origin " +
+          'to the bucket CORS policy (AllowedOrigins) with PUT allowed, then retry.',
       );
     }
-    return `${config.publicBaseUrl}/${key}`;
+    if (!res.ok) {
+      throw new Error(
+        `Upload failed (${res.status} ${res.statusText}). Check the bucket name and credentials.`,
+      );
+    }
+    return `${publicBaseUrl}/${key}`;
   };
 }
 
