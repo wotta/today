@@ -3,6 +3,7 @@ import { useCreateBlockNote } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/mantine';
 import '@blocknote/core/fonts/inter.css';
 import '@blocknote/mantine/style.css';
+import { getUploadFile, type UploadFile } from '../lib/upload';
 
 /**
  * Jira-style rich description: a read view that renders the stored markdown as
@@ -22,6 +23,39 @@ interface Props {
   ariaLabel: string;
 }
 
+/**
+ * Resolve whether file uploads are configured before creating the editor — the
+ * upload handler is fixed at creation time, so we can't add it later. The read
+ * is a single (local) storage lookup; until it resolves we render the box's
+ * footprint so the dialog doesn't jump.
+ */
+export default function RichDescription(props: Props) {
+  const [upload, setUpload] = useState<{ fn: UploadFile | null } | null>(null);
+  useEffect(() => {
+    let active = true;
+    void getUploadFile().then((fn) => {
+      if (active) setUpload({ fn });
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (!upload) {
+    return (
+      <div
+        aria-label={props.ariaLabel}
+        className="today-rich-description mt-4 min-h-[12rem] w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-3 text-[15px] leading-relaxed whitespace-pre-wrap text-stone-700 dark:border-stone-700 dark:bg-stone-900/40 dark:text-stone-200"
+      >
+        {props.value.trim() || (
+          <span className="text-stone-300 dark:text-stone-600">Add a description…</span>
+        )}
+      </div>
+    );
+  }
+  return <DescriptionEditor {...props} uploadFile={upload.fn ?? undefined} />;
+}
+
 /** Track the app's dark mode (the `dark` class on <html>) so BlockNote's chrome
  * matches the surrounding theme and follows the user's toggle while open. */
 function useIsDark(): boolean {
@@ -37,8 +71,13 @@ function useIsDark(): boolean {
   return dark;
 }
 
-export default function RichDescription({ value, onChange, ariaLabel }: Props) {
-  const editor = useCreateBlockNote();
+function DescriptionEditor({
+  value,
+  onChange,
+  ariaLabel,
+  uploadFile,
+}: Props & { uploadFile?: UploadFile }) {
+  const editor = useCreateBlockNote({ uploadFile });
   const [editing, setEditing] = useState(false);
   const isDark = useIsDark();
 

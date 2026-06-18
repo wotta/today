@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -70,6 +70,9 @@ vi.mock('@blocknote/mantine', async () => {
   };
 });
 
+// No object store configured in these tests — uploads are covered separately.
+vi.mock('../entrypoints/newtab/lib/upload', () => ({ getUploadFile: vi.fn(async () => null) }));
+
 import RichDescription from '../entrypoints/newtab/components/RichDescription';
 
 beforeEach(() => h.editor.reset());
@@ -78,13 +81,15 @@ describe('RichDescription', () => {
   it('renders the stored markdown as formatted content in read mode', async () => {
     render(<RichDescription value="hello world" onChange={vi.fn()} ariaLabel="Description" />);
 
-    expect(await screen.findByTestId('rendered')).toHaveTextContent('hello world');
+    await waitFor(() => expect(screen.getByTestId('rendered')).toHaveTextContent('hello world'));
     expect(screen.queryByLabelText('blocknote')).not.toBeInTheDocument();
   });
 
   it('activates the editable editor when the field is focused', async () => {
     render(<RichDescription value="seed" onChange={vi.fn()} ariaLabel="Description" />);
 
+    // Wait for the upload-config lookup to resolve and the editor to mount.
+    await screen.findByTestId('rendered');
     await userEvent.click(screen.getByLabelText('Description'));
 
     expect(await screen.findByLabelText('blocknote')).toBeInTheDocument();
@@ -113,6 +118,7 @@ describe('RichDescription', () => {
     }
     render(<Host />);
 
+    await screen.findByTestId('rendered');
     await userEvent.click(screen.getByLabelText('Description'));
     const input = await screen.findByLabelText('blocknote');
     await userEvent.clear(input);
@@ -133,6 +139,7 @@ describe('RichDescription', () => {
       </>,
     );
 
+    await screen.findByTestId('rendered');
     await userEvent.click(screen.getByLabelText('Description'));
     await screen.findByLabelText('blocknote');
     await userEvent.click(screen.getByText('outside'));
