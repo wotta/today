@@ -25,6 +25,7 @@ playwright-report
 
 # Extension signing key (private key — never commit)
 .dev-key.pem
+.env.submit
 
 # Editor directories and files
 .vscode/*
@@ -37,3 +38,6 @@ playwright-report
 *.sln
 *.sw?
 .gitnexus
+
+# AI
+.claude/skills/gitnexus
