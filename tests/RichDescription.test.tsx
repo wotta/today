@@ -49,7 +49,7 @@ vi.mock('@blocknote/mantine', async () => {
   return {
     // editable -> an input bound to the editor's markdown; read-only -> the
     // rendered content. Both subscribe so a seed/replace re-renders the view.
-    BlockNoteView: ({ editable }: { editable: boolean }) => {
+    BlockNoteView: ({ editable, onChange }: { editable: boolean; onChange?: () => void }) => {
       const [, force] = useReducer((x: number) => x + 1, 0);
       useEffect(() => {
         const unsubscribe = h.editor.subscribe(force);
@@ -61,7 +61,10 @@ vi.mock('@blocknote/mantine', async () => {
         <textarea
           aria-label="blocknote"
           value={h.editor._md}
-          onChange={(e) => h.editor.setMarkdown(e.target.value)}
+          onChange={(e) => {
+            h.editor.setMarkdown(e.target.value);
+            onChange?.();
+          }}
         />
       ) : (
         <div data-testid="rendered">{h.editor._md}</div>
@@ -96,12 +99,11 @@ describe('RichDescription', () => {
     expect(h.editor.focus).toHaveBeenCalled();
   });
 
-  it('persists the edited content as markdown on blur', async () => {
-    const onChange = vi.fn();
-    // A stateful host mirrors the real dialog: the saved markdown flows back in
-    // as the new value, so the field returns to read mode showing it.
+  // A stateful host mirrors the real dialog: a saved value flows back in as the
+  // new value, so the field returns to read mode showing it.
+  function renderHosted(onChange: (markdown: string) => void, initial = 'seed') {
     function Host() {
-      const [value, setValue] = useState('seed');
+      const [value, setValue] = useState(initial);
       return (
         <>
           <RichDescription
@@ -116,34 +118,87 @@ describe('RichDescription', () => {
         </>
       );
     }
-    render(<Host />);
+    return render(<Host />);
+  }
 
+  async function enterEdit() {
     await screen.findByTestId('rendered');
     await userEvent.click(screen.getByLabelText('Description'));
-    const input = await screen.findByLabelText('blocknote');
+    return screen.findByLabelText('blocknote');
+  }
+
+  it('persists and returns to read mode when Save is clicked', async () => {
+    const onChange = vi.fn();
+    renderHosted(onChange);
+
+    const input = await enterEdit();
     await userEvent.clear(input);
     await userEvent.type(input, 'edited markdown');
-    await userEvent.click(screen.getByText('outside'));
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(onChange).toHaveBeenLastCalledWith('edited markdown');
-    // Back to read mode showing the saved content.
     expect(await screen.findByTestId('rendered')).toHaveTextContent('edited markdown');
   });
 
-  it('does not persist when the content is unchanged', async () => {
+  it('saves on ⌘/Ctrl+Enter', async () => {
     const onChange = vi.fn();
-    render(
-      <>
-        <RichDescription value="seed" onChange={onChange} ariaLabel="Description" />
-        <button type="button">outside</button>
-      </>,
-    );
+    renderHosted(onChange);
 
-    await screen.findByTestId('rendered');
-    await userEvent.click(screen.getByLabelText('Description'));
-    await screen.findByLabelText('blocknote');
+    const input = await enterEdit();
+    await userEvent.clear(input);
+    await userEvent.type(input, 'via shortcut');
+    await userEvent.type(input, '{Control>}{Enter}{/Control}');
+
+    expect(onChange).toHaveBeenLastCalledWith('via shortcut');
+    expect(await screen.findByTestId('rendered')).toBeInTheDocument();
+  });
+
+  it('stays in edit mode and does not persist when focus leaves', async () => {
+    const onChange = vi.fn();
+    renderHosted(onChange);
+
+    const input = await enterEdit();
+    await userEvent.clear(input);
+    await userEvent.type(input, 'work in progress');
     await userEvent.click(screen.getByText('outside'));
 
+    // Still editing — no auto-save, no revert.
+    expect(screen.getByLabelText('blocknote')).toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('discards edits when Cancel is clicked', async () => {
+    const onChange = vi.fn();
+    renderHosted(onChange);
+
+    const input = await enterEdit();
+    await userEvent.clear(input);
+    await userEvent.type(input, 'throwaway');
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(await screen.findByTestId('rendered')).toHaveTextContent('seed');
+  });
+
+  it('does not persist when Save is clicked without changes', async () => {
+    const onChange = vi.fn();
+    renderHosted(onChange);
+
+    await enterEdit();
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('flushes pending edits when closed (unmounted) mid-edit', async () => {
+    const onChange = vi.fn();
+    const { unmount } = renderHosted(onChange);
+
+    const input = await enterEdit();
+    await userEvent.clear(input);
+    await userEvent.type(input, 'unsaved but closing');
+    unmount();
+
+    expect(onChange).toHaveBeenLastCalledWith('unsaved but closing');
   });
 });

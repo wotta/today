@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FocusEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useCreateBlockNote } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/mantine';
 import '@blocknote/core/fonts/inter.css';
@@ -81,6 +81,10 @@ function DescriptionEditor({
   const [editing, setEditing] = useState(false);
   const isDark = useIsDark();
 
+  // The latest editor content as markdown, kept in sync on every keystroke so
+  // we can persist without reading the (possibly tearing-down) editor view.
+  const latestRef = useRef(value.trimEnd());
+
   // Seed the editor from the stored markdown — on mount and whenever the value
   // changes from outside (e.g. a remote sync) while we're not actively editing,
   // so we never clobber what the user is typing. An empty value leaves the
@@ -92,6 +96,7 @@ function DescriptionEditor({
     const blocks = editor.tryParseMarkdownToBlocks(value);
     if (blocks.length) editor.replaceBlocks(editor.document, blocks);
     seededRef.current = value;
+    latestRef.current = value.trimEnd();
   }, [editor, value, editing]);
 
   // Move focus into the editor when the user activates edit mode.
@@ -99,20 +104,42 @@ function DescriptionEditor({
     if (editing) editor.focus();
   }, [editing, editor]);
 
-  // Serialize back to markdown, persist if it actually changed, then drop back
-  // to the read view. Markdown export adds a trailing newline, so compare and
-  // store trimmed to keep round-trips stable (no spurious saves).
-  const save = () => {
-    const markdown = editor.blocksToMarkdownLossy().trimEnd();
+  // Persist the edited markdown if it actually changed. Markdown export adds a
+  // trailing newline, so compare and store trimmed to keep round-trips stable
+  // (no spurious saves). Kept in a ref so the unmount flush below always calls
+  // the current closure.
+  const persist = () => {
+    const markdown = latestRef.current;
     if (markdown !== value.trimEnd()) onChange(markdown);
     seededRef.current = markdown;
+  };
+  const persistRef = useRef(persist);
+  persistRef.current = persist;
+  const editingRef = useRef(editing);
+  editingRef.current = editing;
+
+  // Edits are committed only on an explicit Save (button or ⌘/Ctrl+Enter), so
+  // clicking away no longer stores anything. But if the dialog is closed while
+  // editing, flush the pending content on unmount so work is never lost.
+  useEffect(
+    () => () => {
+      if (editingRef.current) persistRef.current();
+    },
+    [],
+  );
+
+  const save = () => {
+    persist();
     setEditing(false);
   };
 
-  const handleBlur = (e: FocusEvent<HTMLDivElement>) => {
-    // Save only when focus leaves the field entirely — not when it moves
-    // between elements inside the editor (toolbar, menus, etc.).
-    if (editing && !e.currentTarget.contains(e.relatedTarget)) save();
+  // Discard edits: restore the editor to the stored markdown, then read mode.
+  const cancel = () => {
+    const blocks = editor.tryParseMarkdownToBlocks(value);
+    editor.replaceBlocks(editor.document, blocks.length ? blocks : [{ type: 'paragraph' }]);
+    latestRef.current = value.trimEnd();
+    seededRef.current = value;
+    setEditing(false);
   };
 
   const empty = !editing && value.trim() === '';
@@ -127,9 +154,14 @@ function DescriptionEditor({
       onClick={() => {
         if (!editing) setEditing(true);
       }}
-      onBlur={handleBlur}
+      onKeyDown={(e) => {
+        if (editing && e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+          e.preventDefault();
+          save();
+        }
+      }}
       className={
-        'today-rich-description mt-4 min-h-[12rem] w-full rounded-lg border py-1 text-[15px] leading-relaxed outline-none ' +
+        'today-rich-description mt-4 min-h-[12rem] w-full rounded-lg border text-[15px] leading-relaxed outline-none ' +
         (editing
           ? 'border-stone-300 dark:border-stone-600'
           : 'cursor-text border-stone-200 dark:border-stone-700') +
@@ -139,7 +171,36 @@ function DescriptionEditor({
       {empty ? (
         <p className="px-3 py-3 text-stone-300 dark:text-stone-600">Add a description…</p>
       ) : (
-        <BlockNoteView editor={editor} editable={editing} theme={isDark ? 'dark' : 'light'} />
+        <BlockNoteView
+          editor={editor}
+          editable={editing}
+          theme={isDark ? 'dark' : 'light'}
+          onChange={() => {
+            latestRef.current = editor.blocksToMarkdownLossy().trimEnd();
+          }}
+        />
+      )}
+
+      {editing && (
+        <div className="flex items-center gap-2 border-t border-stone-200 px-3 py-2 dark:border-stone-700">
+          <button
+            type="button"
+            onClick={save}
+            className="rounded-md bg-stone-800 px-3 py-1 text-[13px] font-medium text-stone-50 transition-colors hover:bg-stone-700 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-white"
+          >
+            Save
+          </button>
+          <button
+            type="button"
+            onClick={cancel}
+            className="rounded-md px-3 py-1 text-[13px] font-medium text-stone-500 transition-colors hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-100"
+          >
+            Cancel
+          </button>
+          <span className="ml-auto select-none text-[11px] text-stone-400 dark:text-stone-500">
+            ⌘/Ctrl+Enter to save
+          </span>
+        </div>
       )}
     </div>
   );
