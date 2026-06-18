@@ -39,5 +39,12 @@ export default defineConfig({
   },
   vite: () => ({
     plugins: [tailwindcss()],
+    build: {
+      // The heavy chunks (BlockNote's editor + comments, CodeMirror for the
+      // notes page) are all lazy-loaded — they never land in the initial
+      // planner bundle, so their size isn't an initial-load concern. Raise the
+      // warning ceiling above them so it still flags a genuine regression.
+      chunkSizeWarningLimit: 800,
+    },
   }),
 });
