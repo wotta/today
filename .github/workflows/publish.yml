@@ -1,0 +1,85 @@
+name: Auto-publish to Chrome Web Store
+
+on:
+  schedule:
+    - cron: "17 * * * *"   # hourly, offset to avoid top-of-hour congestion
+  workflow_dispatch:        # allow manual trigger from the Actions tab
+
+concurrency:
+  group: publish-chrome
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish if repo version is newer than store
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Read target version from package.json
+        id: target
+        run: |
+          RAW=$(node -p "require('./package.json').version")
+          # Chrome manifest versions are numeric-only; strip any pre-release suffix (-alpha etc).
+          NORM=$(printf '%s' "$RAW" | grep -oP '^[0-9]+(\.[0-9]+){0,3}')
+          echo "raw=$RAW"   >> "$GITHUB_OUTPUT"
+          echo "version=$NORM" >> "$GITHUB_OUTPUT"
+          echo "Target: $RAW -> $NORM"
+
+      - name: Read published (draft) version from Chrome Web Store
+        id: store
+        env:
+          CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+          CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+        run: |
+          TOKEN=$(curl -s -X POST 'https://oauth2.googleapis.com/token' \
+            -d client_id="$CHROME_CLIENT_ID" \
+            -d client_secret="$CHROME_CLIENT_SECRET" \
+            -d refresh_token="$CHROME_REFRESH_TOKEN" \
+            -d grant_type=refresh_token | grep -oP '"access_token":\s*"\K[^"]+')
+          if [ -z "$TOKEN" ]; then echo "::error::failed to get access token"; exit 1; fi
+          RESP=$(curl -s -H "Authorization: Bearer $TOKEN" -H "x-goog-api-version: 2" \
+            "https://www.googleapis.com/chromewebstore/v1.1/items/${CHROME_EXTENSION_ID}?projection=DRAFT")
+          LIVE=$(printf '%s' "$RESP" | grep -oP '"crxVersion":\s*"\K[^"]+')
+          echo "store crxVersion: $LIVE"
+          echo "version=$LIVE" >> "$GITHUB_OUTPUT"
+
+      - name: Decide whether to publish
+        id: decide
+        run: |
+          T="${{ steps.target.outputs.version }}"
+          S="${{ steps.store.outputs.version }}"
+          if [ -z "$T" ]; then echo "::error::could not parse target version"; exit 1; fi
+          # publish only if T is strictly greater than S (semver-ish via sort -V)
+          if [ "$T" != "$S" ] && [ "$(printf '%s\n%s\n' "$T" "$S" | sort -V | tail -1)" = "$T" ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "Repo $T > store $S -> will publish"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "Repo $T vs store $S -> nothing to do"
+          fi
+
+      - name: Install dependencies
+        if: steps.decide.outputs.publish == 'true'
+        run: bun install --frozen-lockfile
+
+      - name: Build & zip (production)
+        if: steps.decide.outputs.publish == 'true'
+        run: bun run zip:store
+
+      - name: Submit to Chrome Web Store
+        if: steps.decide.outputs.publish == 'true'
+        env:
+          CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+          CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+          CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          CHROME_PUBLISH_TARGET: ${{ secrets.CHROME_PUBLISH_TARGET }}
+        run: bunx wxt submit --chrome-zip .output/*-chrome.zip
