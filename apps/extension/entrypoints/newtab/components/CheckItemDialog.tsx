@@ -1,6 +1,6 @@
 import { Suspense, lazy, useLayoutEffect, useRef } from 'react';
 import { hourLabel } from '../lib/date';
-import type { CheckItem } from '../lib/types';
+import type { CheckItem } from '@today/types';
 import { Modal } from './Modal';
 
 // BlockNote (and its ProseMirror deps) are the heaviest part of the editor and

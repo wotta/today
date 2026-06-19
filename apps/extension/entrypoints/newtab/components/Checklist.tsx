@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
-import type { CheckItem, DayEntry } from '../lib/types';
-import { ITEM_DRAG_MIME } from '../lib/types';
+import type { CheckItem, DayEntry } from '@today/types';
+import { ITEM_DRAG_MIME } from '@today/types';
 import { hourLabel } from '../lib/date';
 import { CheckItemDialog } from './CheckItemDialog';
 

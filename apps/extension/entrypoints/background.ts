@@ -7,7 +7,7 @@ import {
   upcomingSlot,
 } from './newtab/lib/reminders';
 import { getRemindersEnabled } from './newtab/lib/settings';
-import type { DayEntry } from './newtab/lib/types';
+import type { DayEntry } from '@today/types';
 
 const REMINDER_ALARM = 'slot-reminders';
 const NOTIFIED_KEY = 'notifiedSlots';

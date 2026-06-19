@@ -8,7 +8,7 @@ import {
   saveDay,
   type ExportEnvelope,
 } from '../entrypoints/newtab/lib/db';
-import type { DayEntry } from '../entrypoints/newtab/lib/types';
+import type { DayEntry } from '@today/types';
 
 beforeEach(async () => {
   await db.days.clear();

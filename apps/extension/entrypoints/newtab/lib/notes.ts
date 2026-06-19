@@ -1,4 +1,4 @@
-import type { DayEntry } from './types';
+import type { DayEntry } from '@today/types';
 
 /**
  * Immutably set the day note (hour undefined) or an hour's slot note. Empty

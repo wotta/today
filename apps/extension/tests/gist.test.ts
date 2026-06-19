@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { server } from './msw';
-import type { DayEntry } from '../entrypoints/newtab/lib/types';
+import type { DayEntry } from '@today/types';
 
 vi.mock('../entrypoints/newtab/lib/settings', () => ({
   getGistConfig: vi.fn(async () => ({ pat: 'tok', gistId: 'gid' })),

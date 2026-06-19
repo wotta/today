@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { DayEntry } from './types';
+import type { DayEntry } from '@today/types';
 import { emptyDay, getDay as getCached, saveDay as saveCache } from './db';
 import * as api from './backend';
 

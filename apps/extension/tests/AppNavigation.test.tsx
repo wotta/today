@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { DayEntry } from '../entrypoints/newtab/lib/types';
+import type { DayEntry } from '@today/types';
 import { todayKey } from '../entrypoints/newtab/lib/date';
 
 /**

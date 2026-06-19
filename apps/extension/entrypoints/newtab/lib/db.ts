@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { DayEntry } from './types';
+import type { DayEntry } from '@today/types';
 
 /** One IndexedDB table: a single DayEntry per calendar date, keyed by "YYYY-MM-DD". */
 const db = new Dexie('today') as Dexie & {

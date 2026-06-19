@@ -3,7 +3,7 @@ import {
   itemsDueForSlot,
   upcomingSlot,
 } from '../entrypoints/newtab/lib/reminders';
-import type { CheckItem, DayEntry } from '../entrypoints/newtab/lib/types';
+import type { CheckItem, DayEntry } from '@today/types';
 
 /** Local-time Date for June 11, 2026 at the given time. */
 function at(hours: number, minutes: number, seconds = 0): Date {

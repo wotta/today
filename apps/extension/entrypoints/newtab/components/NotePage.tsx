@@ -3,7 +3,7 @@ import { useDay } from '../lib/useDay';
 import { closeNote } from '../lib/route';
 import { withNote } from '../lib/notes';
 import { formatLongDate, hourLabel } from '../lib/date';
-import type { CheckItem } from '../lib/types';
+import type { CheckItem } from '@today/types';
 import { MarkdownEditor } from './MarkdownEditor';
 import { RuledSheet } from './RuledSheet';
 

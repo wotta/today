@@ -12,7 +12,7 @@ import { noteHash, useRoute } from './lib/route';
 import { useTheme } from './lib/theme';
 import { useDateShortcuts } from './lib/useDateShortcuts';
 import { todayKey } from './lib/date';
-import { AGENDA_END_HOUR, AGENDA_START_HOUR } from './lib/types';
+import { AGENDA_END_HOUR, AGENDA_START_HOUR } from '@today/types';
 
 // The note page pulls in CodeMirror (most of the bundle's weight); load it on
 // demand so opening a new tab only parses the planner view.

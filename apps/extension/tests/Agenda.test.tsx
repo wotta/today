@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Agenda } from '../entrypoints/newtab/components/Agenda';
-import { ITEM_DRAG_MIME, type CheckItem, type DayEntry } from '../entrypoints/newtab/lib/types';
+import { ITEM_DRAG_MIME, type CheckItem, type DayEntry } from '@today/types';
 
 // The description editor lazy-loads BlockNote (ProseMirror), which doesn't run
 // under jsdom. Stub it with a plain textarea so the dialog's description path

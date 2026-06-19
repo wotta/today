@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { withNote } from '../entrypoints/newtab/lib/notes';
-import type { DayEntry } from '../entrypoints/newtab/lib/types';
+import type { DayEntry } from '@today/types';
 
 function day(over: Partial<DayEntry> = {}): DayEntry {
   return { date: '2026-06-10', checkItems: [], agenda: {}, ...over };

@@ -9,7 +9,7 @@ import {
   SERVER_BASE,
   CLIENT_ID,
 } from '../entrypoints/newtab/lib/api';
-import type { DayEntry } from '../entrypoints/newtab/lib/types';
+import type { DayEntry } from '@today/types';
 
 const sample: DayEntry = {
   date: '2026-06-08',

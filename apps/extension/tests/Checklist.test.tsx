@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Checklist } from '../entrypoints/newtab/components/Checklist';
-import type { CheckItem, DayEntry } from '../entrypoints/newtab/lib/types';
+import type { CheckItem, DayEntry } from '@today/types';
 
 // The description editor lazy-loads BlockNote (ProseMirror), which doesn't run
 // under jsdom. Stub it with a plain textarea so the dialog's description path

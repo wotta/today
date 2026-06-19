@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { exportAll, importDays } from '../lib/db';
 import { fetchAllDays, putDay } from '../lib/backend';
-import type { DayEntry } from '../lib/types';
+import type { DayEntry } from '@today/types';
 
 type Status = { ok: boolean; message: string } | null;
 

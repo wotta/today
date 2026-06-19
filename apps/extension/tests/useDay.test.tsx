@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { DayEntry } from '../entrypoints/newtab/lib/types';
+import type { DayEntry } from '@today/types';
 import type { RemoteChange } from '../entrypoints/newtab/lib/api';
 
 // Drive the backend by hand: we capture subscribe's callbacks so tests can

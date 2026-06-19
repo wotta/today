@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AGENDA_END_HOUR, AGENDA_START_HOUR } from './types';
+import { AGENDA_END_HOUR, AGENDA_START_HOUR } from '@today/types';
 
 /**
  * Hash-based routing for the new-tab SPA:

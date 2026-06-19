@@ -1,4 +1,4 @@
-import type { DayEntry } from './types';
+import type { DayEntry } from '@today/types';
 
 /** Must match the helper server's default port (TODAY_PORT). */
 const PORT = 8765;

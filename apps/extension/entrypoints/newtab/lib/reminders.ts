@@ -2,8 +2,8 @@
  * which checklist items it should notify about. The background script owns
  * the alarms/notifications plumbing; keeping this separate makes it testable. */
 
-import type { CheckItem, DayEntry } from './types';
-import { AGENDA_END_HOUR, AGENDA_START_HOUR } from './types';
+import type { CheckItem, DayEntry } from '@today/types';
+import { AGENDA_END_HOUR, AGENDA_START_HOUR } from '@today/types';
 import { toDateKey } from './date';
 
 /** How long before a slot starts the notification fires. */

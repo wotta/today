@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { CheckItemDialog } from '../entrypoints/newtab/components/CheckItemDialog';
-import type { CheckItem } from '../entrypoints/newtab/lib/types';
+import type { CheckItem } from '@today/types';
 
 // The real description editor lazy-loads BlockNote (ProseMirror), which doesn't
 // run under jsdom; its own behaviour is covered in RichDescription.test.tsx.

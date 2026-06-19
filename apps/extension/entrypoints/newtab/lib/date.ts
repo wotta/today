@@ -1,6 +1,6 @@
 /** Date helpers working in the user's local timezone, keyed by "YYYY-MM-DD". */
 
-import { AGENDA_END_HOUR } from './types';
+import { AGENDA_END_HOUR } from '@today/types';
 
 /** Hours up to here past midnight still belong to the previous day's page (26:00 -> 2am). */
 const LATE_NIGHT_CUTOFF_HOUR = AGENDA_END_HOUR - 24;

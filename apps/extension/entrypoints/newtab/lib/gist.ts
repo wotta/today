@@ -1,4 +1,4 @@
-import type { DayEntry } from './types';
+import type { DayEntry } from '@today/types';
 import { emptyDay } from './db';
 import { getGistConfig, type GistConfig } from './settings';
 import type { RemoteChange } from './api';

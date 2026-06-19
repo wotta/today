@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import type { CheckItem, DayEntry } from '../lib/types';
-import { AGENDA_END_HOUR, AGENDA_START_HOUR, ITEM_DRAG_MIME } from '../lib/types';
+import type { CheckItem, DayEntry } from '@today/types';
+import { AGENDA_END_HOUR, AGENDA_START_HOUR, ITEM_DRAG_MIME } from '@today/types';
 import { hourLabel, isLateNight } from '../lib/date';
 import { PER_SLOT_NOTES } from '../lib/flags';
 import { noteHash } from '../lib/route';

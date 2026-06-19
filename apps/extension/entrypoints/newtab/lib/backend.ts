@@ -1,4 +1,4 @@
-import type { DayEntry } from './types';
+import type { DayEntry } from '@today/types';
 import type { RemoteChange } from './api';
 import * as api from './api';
 import * as gist from './gist';

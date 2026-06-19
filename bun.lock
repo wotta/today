@@ -19,6 +19,7 @@
         "@codemirror/view": "^6.43.1",
         "@lezer/highlight": "^1.2.3",
         "@modelcontextprotocol/sdk": "^1.29.0",
+        "@today/types": "workspace:*",
         "aws4fetch": "^1.0.20",
         "dexie": "^4.4.3",
         "dexie-react-hooks": "^4.4.0",
@@ -47,6 +48,10 @@
         "vitest": "^4.1.8",
         "wxt": "^0.20.26",
       },
+    },
+    "packages/types": {
+      "name": "@today/types",
+      "version": "0.0.0",
     },
   },
   "packages": {
@@ -371,6 +376,8 @@
     "@tiptap/react": ["@tiptap/react@3.27.1", "", { "dependencies": { "@types/use-sync-external-store": "^0.0.6", "fast-equals": "^5.3.3", "use-sync-external-store": "^1.4.0" }, "optionalDependencies": { "@tiptap/extension-bubble-menu": "^3.27.1", "@tiptap/extension-floating-menu": "^3.27.1" }, "peerDependencies": { "@tiptap/core": "3.27.1", "@tiptap/pm": "3.27.1", "@types/react": "^17.0.0 || ^18.0.0 || ^19.0.0", "@types/react-dom": "^17.0.0 || ^18.0.0 || ^19.0.0", "react": "^17.0.0 || ^18.0.0 || ^19.0.0", "react-dom": "^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-/Wn2fc9zMtX08MXYScDFsm4wJ8lzfhfPEdbtls7WCDlbtrop48PWlkHDBBJrywARfAQTB2mFs9KiFy9yrQm5Lg=="],
 
     "@today/extension": ["@today/extension@workspace:apps/extension"],
+
+    "@today/types": ["@today/types@workspace:packages/types"],
 
     "@tybys/wasm-util": ["@tybys/wasm-util@0.10.2", "", { "dependencies": { "tslib": "^2.4.0" } }, "sha512-RoBvJ2X0wuKlWFIjrwffGw1IqZHKQqzIchKaadZZfnNpsAYp2mM0h36JtPCjNDAHGgYez/15uMBpfGwchhiMgg=="],
 
