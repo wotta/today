@@ -75,20 +75,29 @@ export function useDay(date: string): UseDay {
   // Load when the date changes; flush the outgoing day first.
   useEffect(() => {
     let active = true;
+    let serverResolved = false;
     flush();
     setLoading(true);
+
+    // Cache-first: paint the local copy immediately so a new tab isn't blank
+    // while the server round-trips (the helper server can take ~1s). The server
+    // is still the source of truth — if it answers, it wins (the guard stops a
+    // late cache read from clobbering fresher server data).
+    void getCached(date).then((cached) => {
+      if (active && !serverResolved) setEntry(cached);
+    });
+
     (async () => {
       try {
         const server = await api.fetchDay(date);
         if (!active) return;
+        serverResolved = true;
         setEntry(server);
         markOnline(true);
         void saveCache(server);
       } catch {
         if (!active) return;
-        const cached = await getCached(date);
-        if (!active) return;
-        setEntry(cached);
+        // Server unreachable: the cache-first read above already painted state.
         markOnline(false);
       } finally {
         if (active) setLoading(false);
