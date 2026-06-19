@@ -28,7 +28,7 @@ jobs:
         run: bun run compile
 
       - name: Type-check server
-        run: bun run server:compile
+        run: bun run --filter '@today/extension' server:compile
 
       - name: Unit tests
         run: bun run test
