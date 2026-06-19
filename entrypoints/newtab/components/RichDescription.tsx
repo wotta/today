@@ -128,16 +128,27 @@ function DescriptionEditor({
   editingRef.current = editing;
 
   // Seed the editor from the draft (if resuming) or the stored value, and focus
-  // it if we open mid-edit. This runs via onMount — touching editor.document /
-  // replaceBlocks / focus before the ProseMirror view is mounted throws "view
-  // not available", which StrictMode's double-mount made reliable.
+  // it if we open mid-edit. Seeding touches editor.document / replaceBlocks /
+  // focus, which throw "view not available" before the ProseMirror view mounts.
+  //
+  // BlockNoteView (a child) emits the mount event during its own effects, which
+  // React runs *before* this parent effect — and BlockNote's emitter has no
+  // replay, so a plain editor.onMount(...) here subscribes too late and the read
+  // view never gets seeded (shows blank until a click remounts the view). So:
+  // seed immediately if the view is already up, and still register onMount for
+  // the not-yet-mounted case (and for the remount on the editable toggle).
   useEffect(() => {
-    return editor.onMount(() => {
+    const seed = () => {
       const initial = initialDraft ?? value;
       const blocks = editor.tryParseMarkdownToBlocks(initial);
       if (blocks.length) editor.replaceBlocks(editor.document, blocks);
       if (editingRef.current) editor.focus();
-    });
+    };
+    if (editor.domElement) {
+      seed();
+      return;
+    }
+    return editor.onMount(seed);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- seed on (re)mount
   }, [editor]);
 
