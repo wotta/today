@@ -1,0 +1,92 @@
+@extends('layouts.app')
+
+@section('title', config('app.name', 'Today'))
+
+@php
+    use Today\Core\CheckItem;
+    // Checklist sorted by order, like the extension.
+    $items = collect($day->checkItems)->sortBy(fn (CheckItem $i) => $i->order)->values();
+@endphp
+
+@section('body')
+<div class="flex min-h-full justify-center px-4 pt-8 pb-28">
+    {{-- Centered notebook page — mirrors the browser extension's planner card. --}}
+    <main class="relative w-full max-w-xl rounded-sm border border-stone-200 bg-[#fcfcfb] px-6 pb-16 pt-7 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-12px_rgba(0,0,0,0.12)] dark:border-stone-700 dark:bg-stone-900 dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_12px_32px_-12px_rgba(0,0,0,0.6)]">
+
+        {{-- Date header --}}
+        <header class="mb-7">
+            <div class="flex items-end justify-between gap-4">
+                <div class="flex items-end gap-2">
+                    <a href="{{ route('planner', ['date' => $prevDate]) }}" aria-label="Previous day"
+                       class="pb-1 text-xl leading-none text-stone-300 transition-colors hover:text-stone-600 dark:text-stone-600 dark:hover:text-stone-300">‹</a>
+                    <div class="relative pl-3">
+                        <span aria-hidden class="absolute -left-1 top-0 h-full w-px -rotate-[24deg] bg-stone-300 dark:bg-stone-600"></span>
+                        <span class="block text-[10px] font-medium uppercase tracking-[0.2em] text-stone-400 dark:text-stone-500">Date</span>
+                        <span class="block whitespace-nowrap text-2xl font-semibold leading-tight tracking-tight text-stone-800 tabular-nums dark:text-stone-100">{{ $longDate }}</span>
+                    </div>
+                    <a href="{{ route('planner', ['date' => $nextDate]) }}" aria-label="Next day"
+                       class="pb-1 text-xl leading-none text-stone-300 transition-colors hover:text-stone-600 dark:text-stone-600 dark:hover:text-stone-300">›</a>
+                    <a href="{{ route('planner', ['date' => $todayDate]) }}"
+                       class="mb-1 ml-1 rounded-full border border-stone-300 px-2.5 py-0.5 text-[11px] font-medium text-stone-500 transition-colors hover:border-stone-500 hover:text-stone-800 dark:border-stone-600 dark:text-stone-400 dark:hover:border-stone-400 dark:hover:text-stone-100 {{ $isToday ? 'invisible' : '' }}">Today</a>
+                </div>
+
+                {{-- Weekday strip ( S M T W T F S ); active day circled. --}}
+                <div class="flex items-center gap-1 text-sm font-medium text-stone-400 dark:text-stone-500">
+                    <span class="mr-1 text-[10px] uppercase tracking-[0.2em] text-stone-400 dark:text-stone-500">Day</span>
+                    <span class="text-stone-300 dark:text-stone-600">(</span>
+                    @foreach ($weekdays as $wd)
+                        <a href="{{ route('planner', ['date' => $wd['date']]) }}"
+                           aria-label="Go to {{ $wd['name'] }} this week"
+                           class="{{ $wd['active']
+                               ? 'flex h-6 w-6 items-center justify-center rounded-full border-2 border-rose-400 font-semibold text-stone-700 dark:text-stone-100'
+                               : 'flex h-6 w-6 items-center justify-center rounded-full transition-colors hover:bg-stone-100 hover:text-stone-700 dark:hover:bg-stone-800 dark:hover:text-stone-200' }}">{{ $wd['letter'] }}</a>
+                    @endforeach
+                    <span class="text-stone-300 dark:text-stone-600">)</span>
+                </div>
+            </div>
+            <div class="mt-3 border-b-2 border-stone-300 dark:border-stone-700"></div>
+        </header>
+
+        {{-- Check --}}
+        <section>
+            <h2 class="mb-2 text-base font-semibold tracking-tight text-stone-700 dark:text-stone-200">Check</h2>
+            <ul>
+                @forelse ($items as $item)
+                    <li class="flex items-center gap-2.5 border-b border-stone-200 py-2 dark:border-stone-700/70">
+                        <span aria-hidden class="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[3px] border {{ $item->done ? 'border-stone-700 bg-stone-700 text-white dark:border-stone-300 dark:bg-stone-300 dark:text-stone-900' : 'border-stone-400 bg-white dark:border-stone-500 dark:bg-transparent' }} text-[11px] leading-none">{{ $item->done ? '✓' : '' }}</span>
+                        <span class="flex-1 text-[15px] {{ $item->done ? 'text-stone-400 line-through dark:text-stone-500' : 'text-stone-700 dark:text-stone-200' }}">{{ $item->text }}</span>
+                    </li>
+                @empty
+                    <li class="flex items-center gap-2.5 border-b border-stone-200 py-2 text-[15px] text-stone-300 dark:border-stone-700/70 dark:text-stone-600">
+                        <span aria-hidden class="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[3px] border border-dashed border-stone-300 text-xs leading-none text-stone-300 dark:border-stone-600 dark:text-stone-600">+</span>
+                        Nothing yet.
+                    </li>
+                @endforelse
+            </ul>
+        </section>
+
+        {{-- Agenda --}}
+        <section class="mt-8">
+            <h2 class="mb-2 text-base font-semibold tracking-tight text-stone-700 dark:text-stone-200">Agenda</h2>
+            <ul>
+                @for ($hour = $startHour; $hour <= $endHour; $hour++)
+                    @php $even = $hour % 2 === 0; $isNow = $hour === $currentHour; @endphp
+                    <li class="flex items-stretch {{ $even ? 'border-t border-stone-300 dark:border-stone-700' : 'border-t border-stone-200/60 dark:border-stone-700/40' }} {{ $isNow ? 'bg-amber-50/70 dark:bg-amber-400/10' : '' }}">
+                        <span class="w-14 shrink-0 select-none border-r border-stone-300 py-1 pr-3 text-right text-[11px] tabular-nums dark:border-stone-700 {{ $even ? 'text-stone-400 dark:text-stone-500' : 'text-transparent' }} {{ $isNow ? '!text-amber-600 font-semibold dark:!text-amber-400' : '' }}">{{ $even ? sprintf('%d:00', $hour > 24 ? $hour - 24 : $hour) : '' }}</span>
+                        <div class="flex min-h-[34px] min-w-0 flex-1 items-center px-3 py-1 text-[15px] text-stone-700 dark:text-stone-200">{{ $day->agenda[$hour] ?? '' }}</div>
+                    </li>
+                @endfor
+                <li class="border-t border-stone-300 dark:border-stone-700" aria-hidden></li>
+            </ul>
+        </section>
+    </main>
+</div>
+
+{{-- Theme segmented control (light / auto / dark) — fixed bottom-right. --}}
+<div class="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-10 flex items-center gap-1 rounded-full border border-stone-200 bg-white/85 p-1 shadow-sm backdrop-blur dark:border-stone-700 dark:bg-stone-800/85">
+    @foreach (['light' => 'Light', 'auto' => 'Auto', 'dark' => 'Dark'] as $value => $label)
+        <button type="button" data-set-theme="{{ $value }}" aria-pressed="false"
+            class="rounded-full px-3 py-1 text-[12px] font-medium text-stone-500 transition-colors hover:text-stone-800 aria-pressed:bg-stone-800 aria-pressed:text-white dark:text-stone-400 dark:hover:text-stone-100 dark:aria-pressed:bg-stone-100 dark:aria-pressed:text-stone-900">{{ $label }}</button>
+    @endforeach
+</div>
+@endsection
