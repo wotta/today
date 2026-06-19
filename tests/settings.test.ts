@@ -25,11 +25,25 @@ vi.mock('wxt/browser', () => ({
 
 import {
   clearGistConfig,
+  clearS3Config,
   getGistConfig,
   getRemindersEnabled,
+  getS3Config,
   setGistConfig,
   setRemindersEnabled,
+  setS3Config,
+  type S3Config,
 } from '../entrypoints/newtab/lib/settings';
+
+const s3 = (over: Partial<S3Config> = {}): S3Config => ({
+  endpoint: 'https://acc.r2.cloudflarestorage.com',
+  bucket: 'files',
+  accessKeyId: 'AKIA',
+  secretAccessKey: 'secret',
+  region: 'auto',
+  publicBaseUrl: 'https://pub.r2.dev',
+  ...over,
+});
 
 beforeEach(() => {
   store.data = {};
@@ -61,6 +75,35 @@ describe('setGistConfig / clearGistConfig', () => {
     await setGistConfig({ pat: 'tok', gistId: 'abc123' });
     await clearGistConfig();
     expect(await getGistConfig()).toBeNull();
+  });
+});
+
+describe('getS3Config', () => {
+  it('returns null when nothing is stored', async () => {
+    expect(await getS3Config()).toBeNull();
+  });
+
+  it('returns null when a required field is missing', async () => {
+    await setS3Config(s3({ publicBaseUrl: '' }));
+    expect(await getS3Config()).toBeNull();
+  });
+
+  it('round-trips a full config and defaults region to auto', async () => {
+    await setS3Config(s3({ region: '' }));
+    expect(await getS3Config()).toEqual(s3({ region: 'auto' }));
+  });
+
+  it('strips trailing slashes from endpoint and public base URL', async () => {
+    await setS3Config(s3({ endpoint: 'https://acc.r2.cloudflarestorage.com/', publicBaseUrl: 'https://pub.r2.dev/' }));
+    const config = await getS3Config();
+    expect(config?.endpoint).toBe('https://acc.r2.cloudflarestorage.com');
+    expect(config?.publicBaseUrl).toBe('https://pub.r2.dev');
+  });
+
+  it('clears every field', async () => {
+    await setS3Config(s3());
+    await clearS3Config();
+    expect(await getS3Config()).toBeNull();
   });
 });
 

@@ -53,6 +53,19 @@ body {
   }
 }
 
+/* Let the BlockNote description editor fill its taller box, so the whole area
+   is clickable and typeable like the textarea it replaced. */
+.today-rich-description .bn-editor {
+  min-height: 11rem;
+}
+
+/* In read mode there are no drag handles to leave room for, so drop BlockNote's
+   wide editing gutter and align the rendered text with the empty-state
+   placeholder (px-3) instead of indenting it oddly far from the box edge. */
+.today-rich-description .bn-editor[contenteditable='false'] {
+  padding-inline: 0.75rem;
+}
+
 /* Hide number input spinners; keep inputs flush with the paper look. */
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {

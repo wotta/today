@@ -4,6 +4,23 @@ import { describe, expect, it, vi } from 'vitest';
 import { Agenda } from '../entrypoints/newtab/components/Agenda';
 import { ITEM_DRAG_MIME, type CheckItem, type DayEntry } from '../entrypoints/newtab/lib/types';
 
+// The description editor lazy-loads BlockNote (ProseMirror), which doesn't run
+// under jsdom. Stub it with a plain textarea so the dialog's description path
+// stays testable here; its own behaviour lives in RichDescription.test.tsx.
+vi.mock('../entrypoints/newtab/components/RichDescription', () => ({
+  default: ({
+    value,
+    onChange,
+    ariaLabel,
+  }: {
+    value: string;
+    onChange: (markdown: string) => void;
+    ariaLabel: string;
+  }) => (
+    <textarea aria-label={ariaLabel} value={value} onChange={(e) => onChange(e.target.value)} />
+  ),
+}));
+
 const item = (over: Partial<CheckItem> = {}): CheckItem => ({
   id: 'a',
   text: 'Dit is een test',

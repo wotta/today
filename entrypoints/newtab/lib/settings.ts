@@ -36,6 +36,70 @@ export async function clearGistConfig(): Promise<void> {
   await browser.storage.local.remove([PAT_KEY, GIST_ID_KEY]);
 }
 
+/**
+ * Connection settings for an S3-compatible object store (Cloudflare R2, AWS S3,
+ * MinIO, …) used to upload files from the BlockNote editor. Uploads are signed
+ * in the browser (SigV4) with these credentials, so prefer a bucket-scoped
+ * token: it lives in extension-local storage, like the Gist PAT.
+ */
+export interface S3Config {
+  /** S3 API endpoint, e.g. `https://<account>.r2.cloudflarestorage.com`. */
+  endpoint: string;
+  bucket: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  /** SigV4 region. R2 ignores it — `auto` is the right default there. */
+  region: string;
+  /** Public base URL files are served from, e.g. `https://pub-xxxx.r2.dev`. */
+  publicBaseUrl: string;
+}
+
+const S3_KEYS = {
+  endpoint: 's3Endpoint',
+  bucket: 's3Bucket',
+  accessKeyId: 's3AccessKeyId',
+  secretAccessKey: 's3SecretAccessKey',
+  region: 's3Region',
+  publicBaseUrl: 's3PublicBaseUrl',
+} as const;
+
+function str(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+/**
+ * Read the object-store config from extension-local storage. Returns null
+ * unless every field needed to both upload and serve a file is present, so a
+ * half-configured store never enables broken uploads. `region` falls back to
+ * `auto` (correct for R2) when blank.
+ */
+export async function getS3Config(): Promise<S3Config | null> {
+  const stored = await browser.storage.local.get(Object.values(S3_KEYS));
+  const endpoint = str(stored[S3_KEYS.endpoint]).replace(/\/+$/, '');
+  const bucket = str(stored[S3_KEYS.bucket]);
+  const accessKeyId = str(stored[S3_KEYS.accessKeyId]);
+  const secretAccessKey = str(stored[S3_KEYS.secretAccessKey]);
+  const publicBaseUrl = str(stored[S3_KEYS.publicBaseUrl]).replace(/\/+$/, '');
+  const region = str(stored[S3_KEYS.region]) || 'auto';
+  if (!endpoint || !bucket || !accessKeyId || !secretAccessKey || !publicBaseUrl) return null;
+  return { endpoint, bucket, accessKeyId, secretAccessKey, region, publicBaseUrl };
+}
+
+export async function setS3Config(config: S3Config): Promise<void> {
+  await browser.storage.local.set({
+    [S3_KEYS.endpoint]: config.endpoint.trim().replace(/\/+$/, ''),
+    [S3_KEYS.bucket]: config.bucket.trim(),
+    [S3_KEYS.accessKeyId]: config.accessKeyId.trim(),
+    [S3_KEYS.secretAccessKey]: config.secretAccessKey.trim(),
+    [S3_KEYS.region]: config.region.trim() || 'auto',
+    [S3_KEYS.publicBaseUrl]: config.publicBaseUrl.trim().replace(/\/+$/, ''),
+  });
+}
+
+export async function clearS3Config(): Promise<void> {
+  await browser.storage.local.remove(Object.values(S3_KEYS));
+}
+
 const REMINDERS_KEY = 'remindersEnabled';
 
 /** Whether slot reminders fire. Defaults to on; the options page can disable them. */
