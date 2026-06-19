@@ -1,5 +1,6 @@
 {
     "$schema": "https://www.schemastore.org/package.json",
+    "name": "@today/mobile",
     "private": true,
     "type": "module",
     "scripts": {
