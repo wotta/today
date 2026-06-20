@@ -1,43 +1,98 @@
-// Horizontal swipe to change day on the planner. Drag the card left -> next
-// day, right -> previous day; release past the threshold navigates, otherwise
-// it snaps back. Axis is locked on the first significant move so vertical
-// scrolling is never hijacked.
+// Carousel-style day swipe. Instead of sliding the current day off to a blank
+// background, we lay the previous and next days out as side panels in a track
+// and drag the whole track, so the day you're swiping toward slides in under
+// your finger. Releasing past the threshold animates to that panel and commits
+// the navigation; otherwise it snaps back.
+//
+// Neighbour panels are fetched lazily (same local data, so effectively instant)
+// and Alpine renders their content just like the live page.
 
-const THRESHOLD = 70; // px of horizontal travel needed to commit
-const LOCK = 10; // px before we decide the gesture is horizontal vs vertical
+const THRESHOLD = 70; // px of horizontal travel to commit
+const LOCK = 10; // px before the gesture is judged horizontal vs vertical
 
 export function initSwipe() {
-    const el = document.querySelector('[data-swipe]');
-    if (!el) return;
+    const main = document.querySelector('[data-swipe]');
+    if (!main) return;
 
-    const prevUrl = el.dataset.prev || '';
-    const nextUrl = el.dataset.next || '';
+    // Touch-only enhancement; desktop keeps the plain page.
+    const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    if (!isTouch) return;
+
+    const prevUrl = main.dataset.prev || '';
+    const nextUrl = main.dataset.next || '';
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+    // Build the carousel: viewport (clips horizontally) > track (flex row) >
+    // [prev][current][next] panels, each one viewport wide.
+    const viewport = main.parentElement;
+    viewport.style.overflowX = 'clip';
+    viewport.style.position = 'relative';
+
+    const track = document.createElement('div');
+    track.style.display = 'flex';
+    track.style.willChange = 'transform';
+
+    const panel = () => {
+        const p = document.createElement('div');
+        p.style.flex = '0 0 100%';
+        p.style.minWidth = '0';
+        return p;
+    };
+    const left = panel();
+    const center = panel();
+    const right = panel();
+    // Neighbours are previews — don't let taps land in them mid-swipe.
+    left.style.pointerEvents = 'none';
+    right.style.pointerEvents = 'none';
+
+    center.appendChild(main); // move the live day into the middle
+    track.append(left, center, right);
+    viewport.appendChild(track);
+
+    let W = viewport.clientWidth;
+    const setX = (px, animate) => {
+        track.style.transition = animate && !reduce ? 'transform 0.22s ease' : 'none';
+        track.style.transform = `translateX(${px}px)`;
+    };
+    setX(-W, false); // center the current day
+
+    // Lazily load a neighbour's rendered planner into its panel.
+    const fill = (slot, url) => {
+        if (!url) return;
+        fetch(url)
+            .then((r) => r.text())
+            .then((html) => {
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const m = doc.querySelector('[data-swipe]');
+                if (!m) return;
+                m.removeAttribute('data-swipe'); // not a swipe root, just a preview
+                slot.appendChild(m); // Alpine renders its content on insert
+            })
+            .catch(() => {});
+    };
+    fill(left, prevUrl);
+    fill(right, nextUrl);
 
     let x0 = 0;
     let y0 = 0;
     let dx = 0;
     let axis = null; // null | 'h' | 'v'
 
-    const reset = () => {
-        axis = null;
-        dx = 0;
-    };
-
-    el.addEventListener(
+    viewport.addEventListener(
         'touchstart',
         (e) => {
             if (e.touches.length !== 1) return;
+            W = viewport.clientWidth;
             x0 = e.touches[0].clientX;
             y0 = e.touches[0].clientY;
-            axis = null;
             dx = 0;
-            el.style.transition = 'none';
+            axis = null;
+            setX(-W, false);
         },
         { passive: true },
     );
 
-    el.addEventListener(
+    viewport.addEventListener(
         'touchmove',
         (e) => {
             if (e.touches.length !== 1) return;
@@ -50,40 +105,43 @@ export function initSwipe() {
             }
 
             if (axis === 'h') {
-                e.preventDefault(); // stop the page from scrolling during a horizontal drag
-                // Resist dragging toward an edge that has nowhere to go.
-                const target = dx < 0 ? nextUrl : prevUrl;
-                const factor = target ? 0.6 : 0.2;
-                el.style.transform = `translateX(${dx * factor}px)`;
-                el.style.opacity = String(Math.max(0.5, 1 - Math.abs(dx) / 800));
+                e.preventDefault(); // own the horizontal gesture; let vertical scroll
+                let d = dx;
+                // Resist dragging toward an edge with no day to show.
+                if ((d > 0 && !prevUrl) || (d < 0 && !nextUrl)) d *= 0.2;
+                setX(-W + d, false);
             }
         },
         { passive: false },
     );
 
-    el.addEventListener('touchend', () => {
-        if (axis !== 'h') {
-            reset();
-            return;
-        }
+    viewport.addEventListener('touchend', () => {
+        if (axis !== 'h') return;
 
-        const target = dx < 0 ? nextUrl : prevUrl;
-        const committed = Math.abs(dx) > THRESHOLD && target;
+        const goNext = dx < 0 && nextUrl;
+        const goPrev = dx > 0 && prevUrl;
 
-        el.style.transition = reduce ? 'none' : 'transform 0.18s ease, opacity 0.18s ease';
-
-        if (committed) {
-            // Slide the card the rest of the way out, then navigate.
-            const out = dx < 0 ? -window.innerWidth : window.innerWidth;
-            el.style.transform = `translateX(${out}px)`;
-            el.style.opacity = '0';
-            const go = () => (window.location.href = target);
-            if (reduce) go();
-            else setTimeout(go, 150);
+        if (Math.abs(dx) > THRESHOLD && (goNext || goPrev)) {
+            const target = goNext ? nextUrl : prevUrl;
+            setX(goNext ? -2 * W : 0, true); // slide the neighbour fully in
+            const nav = () => (window.location.href = target);
+            if (reduce) {
+                nav();
+            } else {
+                let done = false;
+                const finish = () => {
+                    if (done) return;
+                    done = true;
+                    track.removeEventListener('transitionend', finish);
+                    nav();
+                };
+                track.addEventListener('transitionend', finish);
+                setTimeout(finish, 320); // fallback if transitionend doesn't fire
+            }
         } else {
-            el.style.transform = 'translateX(0)';
-            el.style.opacity = '1';
+            setX(-W, true); // snap back
         }
-        reset();
+        axis = null;
+        dx = 0;
     });
 }
