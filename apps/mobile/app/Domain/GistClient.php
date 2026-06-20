@@ -69,7 +69,9 @@ class GistClient
         $res = $this->http($pat)->get(self::API . "/gists/{$gistId}");
         $this->guard($res->status());
 
-        $file = $res->json('files.' . self::FILE);
+        // NB: access via the array, not $res->json('files.today-data.json') —
+        // the dot in the filename would be read as a nested key path.
+        $file = $res->json('files')[self::FILE] ?? null;
         if (! $file) {
             return [];
         }
