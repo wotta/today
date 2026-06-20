@@ -38,7 +38,9 @@ class PlannerController extends Controller
                 'letter' => $letter,
                 'name' => $names[$i],
                 'date' => $cell->toDateString(),
+                'dom' => $cell->day,
                 'active' => $i === $activeDow,
+                'isToday' => $cell->isSameDay($today),
             ];
         }
 
@@ -46,6 +48,8 @@ class PlannerController extends Controller
             'day' => $day,
             'date' => $date->toDateString(),
             'longDate' => $date->format('F j, Y'),
+            'weekdayName' => $date->format('l'),
+            'monthDay' => $date->format('F j'),
             'prevDate' => $date->copy()->subDay()->toDateString(),
             'nextDate' => $date->copy()->addDay()->toDateString(),
             'todayDate' => $today->toDateString(),
