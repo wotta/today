@@ -4,16 +4,18 @@
 
 @php
     use Today\Core\CheckItem;
-    // Checklist sorted by order, like the extension.
-    $items = collect($day->checkItems)->sortBy(fn (CheckItem $i) => $i->order)->values();
+    // Initial state handed to the Alpine planner component.
+    $initCheck = array_map(fn (CheckItem $i) => $i->toArray(), $day->checkItems);
 @endphp
 
 @section('body')
 <div class="flex min-h-full justify-center px-4 pt-8 pb-28">
     {{-- Centered notebook page — mirrors the browser extension's planner card. --}}
-    <main class="relative w-full max-w-xl rounded-sm border border-stone-200 bg-[#fcfcfb] px-6 pb-16 pt-7 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-12px_rgba(0,0,0,0.12)] dark:border-stone-700 dark:bg-stone-900 dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_12px_32px_-12px_rgba(0,0,0,0.6)]">
-
-        {{-- Date header --}}
+    <main
+        x-data="planner({ date: @js($date), checkItems: @js($initCheck), agenda: @js((object) $day->agenda) })"
+        class="relative w-full max-w-xl rounded-sm border border-stone-200 bg-[#fcfcfb] px-6 pb-16 pt-7 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-12px_rgba(0,0,0,0.12)] dark:border-stone-700 dark:bg-stone-900 dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_12px_32px_-12px_rgba(0,0,0,0.6)]"
+    >
+        {{-- Date header (server-rendered; navigation = full page loads) --}}
         <header class="mb-7">
             <div class="flex items-end justify-between gap-4">
                 <div class="flex items-end gap-2">
@@ -30,7 +32,6 @@
                        class="mb-1 ml-1 rounded-full border border-stone-300 px-2.5 py-0.5 text-[11px] font-medium text-stone-500 transition-colors hover:border-stone-500 hover:text-stone-800 dark:border-stone-600 dark:text-stone-400 dark:hover:border-stone-400 dark:hover:text-stone-100 {{ $isToday ? 'invisible' : '' }}">Today</a>
                 </div>
 
-                {{-- Weekday strip ( S M T W T F S ); active day circled. --}}
                 <div class="flex items-center gap-1 text-sm font-medium text-stone-400 dark:text-stone-500">
                     <span class="mr-1 text-[10px] uppercase tracking-[0.2em] text-stone-400 dark:text-stone-500">Day</span>
                     <span class="text-stone-300 dark:text-stone-600">(</span>
@@ -51,17 +52,28 @@
         <section>
             <h2 class="mb-2 text-base font-semibold tracking-tight text-stone-700 dark:text-stone-200">Check</h2>
             <ul>
-                @forelse ($items as $item)
-                    <li class="flex items-center gap-2.5 border-b border-stone-200 py-2 dark:border-stone-700/70">
-                        <span aria-hidden class="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[3px] border {{ $item->done ? 'border-stone-700 bg-stone-700 text-white dark:border-stone-300 dark:bg-stone-300 dark:text-stone-900' : 'border-stone-400 bg-white dark:border-stone-500 dark:bg-transparent' }} text-[11px] leading-none">{{ $item->done ? '✓' : '' }}</span>
-                        <span class="flex-1 text-[15px] {{ $item->done ? 'text-stone-400 line-through dark:text-stone-500' : 'text-stone-700 dark:text-stone-200' }}">{{ $item->text }}</span>
+                <template x-for="item in sortedItems" :key="item.id">
+                    <li class="group flex items-center gap-2.5 border-b border-stone-200 py-2 dark:border-stone-700/70">
+                        <button type="button" @click="toggle(item.id)" :aria-pressed="item.done" aria-label="Toggle done"
+                            class="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[3px] border text-[11px] leading-none transition-colors"
+                            :class="item.done ? 'border-stone-700 bg-stone-700 text-white dark:border-stone-300 dark:bg-stone-300 dark:text-stone-900' : 'border-stone-400 bg-white text-transparent dark:border-stone-500 dark:bg-transparent'">
+                            <span x-text="item.done ? '✓' : ''"></span>
+                        </button>
+                        <input :value="item.text" @input="editText(item.id, $event.target.value)"
+                            class="flex-1 bg-transparent text-[15px] outline-none placeholder:text-stone-300 dark:placeholder:text-stone-600"
+                            :class="item.done ? 'text-stone-400 line-through dark:text-stone-500' : 'text-stone-700 dark:text-stone-200'" />
+                        <button type="button" aria-label="Delete item" @click="remove(item.id)"
+                            class="shrink-0 px-1 text-stone-300 transition-colors hover:text-stone-600 dark:text-stone-600 dark:hover:text-stone-300">✕</button>
                     </li>
-                @empty
-                    <li class="flex items-center gap-2.5 border-b border-stone-200 py-2 text-[15px] text-stone-300 dark:border-stone-700/70 dark:text-stone-600">
-                        <span aria-hidden class="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[3px] border border-dashed border-stone-300 text-xs leading-none text-stone-300 dark:border-stone-600 dark:text-stone-600">+</span>
-                        Nothing yet.
-                    </li>
-                @endforelse
+                </template>
+
+                {{-- Add row --}}
+                <li class="flex items-center gap-2.5 border-b border-stone-200 py-2 dark:border-stone-700/70">
+                    <span aria-hidden class="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[3px] border border-dashed border-stone-300 text-xs leading-none text-stone-300 dark:border-stone-600 dark:text-stone-600">+</span>
+                    <input x-model="draft" @keydown.enter="addItem()"
+                        :placeholder="checkItems.length ? 'Add a task…' : 'Add your first task…'"
+                        class="flex-1 bg-transparent text-[15px] text-stone-700 outline-none placeholder:text-stone-300 dark:text-stone-200 dark:placeholder:text-stone-600" />
+                </li>
             </ul>
         </section>
 
@@ -73,7 +85,11 @@
                     @php $even = $hour % 2 === 0; $isNow = $hour === $currentHour; @endphp
                     <li class="flex items-stretch {{ $even ? 'border-t border-stone-300 dark:border-stone-700' : 'border-t border-stone-200/60 dark:border-stone-700/40' }} {{ $isNow ? 'bg-amber-50/70 dark:bg-amber-400/10' : '' }}">
                         <span class="w-14 shrink-0 select-none border-r border-stone-300 py-1 pr-3 text-right text-[11px] tabular-nums dark:border-stone-700 {{ $even ? 'text-stone-400 dark:text-stone-500' : 'text-transparent' }} {{ $isNow ? '!text-amber-600 font-semibold dark:!text-amber-400' : '' }}">{{ $even ? sprintf('%d:00', $hour > 24 ? $hour - 24 : $hour) : '' }}</span>
-                        <div class="flex min-h-[34px] min-w-0 flex-1 items-center px-3 py-1 text-[15px] text-stone-700 dark:text-stone-200">{{ $day->agenda[$hour] ?? '' }}</div>
+                        <div class="flex min-h-[34px] min-w-0 flex-1 items-center py-1">
+                            <input :value="agenda[{{ $hour }}] ?? ''" @input="setAgenda({{ $hour }}, $event.target.value)"
+                                aria-label="Agenda at {{ sprintf('%d:00', $hour > 24 ? $hour - 24 : $hour) }}"
+                                class="w-full bg-transparent px-3 text-[15px] text-stone-700 outline-none dark:text-stone-200" />
+                        </div>
                     </li>
                 @endfor
                 <li class="border-t border-stone-300 dark:border-stone-700" aria-hidden></li>
