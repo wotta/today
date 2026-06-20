@@ -9,14 +9,17 @@
 @endphp
 
 @section('body')
-<div class="flex min-h-full justify-center px-4 pt-8 pb-28">
-    {{-- Centered notebook page — mirrors the browser extension's planner card. --}}
+<div class="min-h-screen">
+    {{-- Full-screen notebook page. Background runs edge to edge (under the
+         Dynamic Island); content is kept clear of the bezel via safe-area
+         padding. Wider screens still cap the content column at max-w-xl. --}}
     <main
         x-data="planner({ date: @js($date), checkItems: @js($initCheck), agenda: @js((object) $day->agenda) })"
         data-swipe
         data-prev="{{ route('planner', ['date' => $prevDate]) }}"
         data-next="{{ route('planner', ['date' => $nextDate]) }}"
-        class="relative w-full max-w-xl touch-pan-y rounded-sm border border-stone-200 bg-[#fcfcfb] px-6 pb-16 pt-7 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-12px_rgba(0,0,0,0.12)] dark:border-stone-700 dark:bg-stone-900 dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_12px_32px_-12px_rgba(0,0,0,0.6)]"
+        style="padding-top: calc(env(safe-area-inset-top) + 1.5rem); padding-bottom: calc(env(safe-area-inset-bottom) + 7rem); padding-left: max(1.5rem, env(safe-area-inset-left)); padding-right: max(1.5rem, env(safe-area-inset-right));"
+        class="relative mx-auto min-h-screen w-full max-w-xl touch-pan-y bg-[#fcfcfb] dark:bg-stone-900"
     >
         {{-- Date header (server-rendered; navigation = full page loads) --}}
         <header class="mb-7">

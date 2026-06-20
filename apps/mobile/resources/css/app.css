@@ -64,12 +64,8 @@ body {
     transition:
         background-color 0.2s ease,
         color 0.2s ease;
-    /* Honour the device notch / home indicator. */
-    padding:
-        env(safe-area-inset-top)
-        env(safe-area-inset-right)
-        env(safe-area-inset-bottom)
-        env(safe-area-inset-left);
+    /* Safe-area insets are applied per-page (full-bleed planner needs its
+       background under the notch, with only the content kept clear). */
     -webkit-tap-highlight-color: transparent;
 }
 

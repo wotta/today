@@ -5,7 +5,7 @@
 @php $status = session('status'); @endphp
 
 @section('body')
-<div class="mx-auto w-full max-w-xl px-4 py-10">
+<div class="mx-auto w-full max-w-xl px-4" style="padding-top: calc(env(safe-area-inset-top) + 1.5rem); padding-bottom: calc(env(safe-area-inset-bottom) + 2.5rem);">
     <div class="mb-5 flex items-center justify-between">
         <h1 class="text-xl font-semibold tracking-tight text-stone-800 dark:text-stone-100">Settings</h1>
         <a href="{{ route('planner') }}" class="text-[13px] font-medium text-stone-500 underline decoration-stone-300 underline-offset-2 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-100">‹ Back to planner</a>
