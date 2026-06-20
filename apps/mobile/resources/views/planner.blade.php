@@ -17,35 +17,33 @@
     >
         {{-- Date header (server-rendered; navigation = full page loads) --}}
         <header class="mb-7">
-            <div class="flex items-end justify-between gap-4">
-                <div class="flex items-end gap-2">
-                    <a href="{{ route('planner', ['date' => $prevDate]) }}" aria-label="Previous day"
-                       class="pb-1 text-xl leading-none text-stone-300 transition-colors hover:text-stone-600 dark:text-stone-600 dark:hover:text-stone-300">‹</a>
-                    <div class="relative pl-3">
-                        <span aria-hidden class="absolute -left-1 top-0 h-full w-px -rotate-[24deg] bg-stone-300 dark:bg-stone-600"></span>
-                        <span class="block text-[10px] font-medium uppercase tracking-[0.2em] text-stone-400 dark:text-stone-500">Date</span>
-                        <span class="block whitespace-nowrap text-2xl font-semibold leading-tight tracking-tight text-stone-800 tabular-nums dark:text-stone-100">{{ $longDate }}</span>
-                    </div>
-                    <a href="{{ route('planner', ['date' => $nextDate]) }}" aria-label="Next day"
-                       class="pb-1 text-xl leading-none text-stone-300 transition-colors hover:text-stone-600 dark:text-stone-600 dark:hover:text-stone-300">›</a>
-                    <a href="{{ route('planner', ['date' => $todayDate]) }}"
-                       class="mb-1 ml-1 rounded-full border border-stone-300 px-2.5 py-0.5 text-[11px] font-medium text-stone-500 transition-colors hover:border-stone-500 hover:text-stone-800 dark:border-stone-600 dark:text-stone-400 dark:hover:border-stone-400 dark:hover:text-stone-100 {{ $isToday ? 'invisible' : '' }}">Today</a>
+            {{-- Date + Today --}}
+            <div class="flex items-end gap-2">
+                <a href="{{ route('planner', ['date' => $prevDate]) }}" aria-label="Previous day"
+                   class="pb-1 text-xl leading-none text-stone-300 transition-colors hover:text-stone-600 dark:text-stone-600 dark:hover:text-stone-300">‹</a>
+                <div class="relative pl-3">
+                    <span aria-hidden class="absolute -left-1 top-0 h-full w-px -rotate-[24deg] bg-stone-300 dark:bg-stone-600"></span>
+                    <span class="block text-[10px] font-medium uppercase tracking-[0.2em] text-stone-400 dark:text-stone-500">Date</span>
+                    <span class="block whitespace-nowrap text-2xl font-semibold leading-tight tracking-tight text-stone-800 tabular-nums dark:text-stone-100">{{ $longDate }}</span>
                 </div>
-
-                <div class="flex items-center gap-1 text-sm font-medium text-stone-400 dark:text-stone-500">
-                    <span class="mr-1 text-[10px] uppercase tracking-[0.2em] text-stone-400 dark:text-stone-500">Day</span>
-                    <span class="text-stone-300 dark:text-stone-600">(</span>
-                    @foreach ($weekdays as $wd)
-                        <a href="{{ route('planner', ['date' => $wd['date']]) }}"
-                           aria-label="Go to {{ $wd['name'] }} this week"
-                           class="{{ $wd['active']
-                               ? 'flex h-6 w-6 items-center justify-center rounded-full border-2 border-rose-400 font-semibold text-stone-700 dark:text-stone-100'
-                               : 'flex h-6 w-6 items-center justify-center rounded-full transition-colors hover:bg-stone-100 hover:text-stone-700 dark:hover:bg-stone-800 dark:hover:text-stone-200' }}">{{ $wd['letter'] }}</a>
-                    @endforeach
-                    <span class="text-stone-300 dark:text-stone-600">)</span>
-                </div>
+                <a href="{{ route('planner', ['date' => $nextDate]) }}" aria-label="Next day"
+                   class="pb-1 text-xl leading-none text-stone-300 transition-colors hover:text-stone-600 dark:text-stone-600 dark:hover:text-stone-300">›</a>
+                <a href="{{ route('planner', ['date' => $todayDate]) }}"
+                   class="mb-1 ml-1 rounded-full border border-stone-300 px-2.5 py-0.5 text-[11px] font-medium text-stone-500 transition-colors hover:border-stone-500 hover:text-stone-800 dark:border-stone-600 dark:text-stone-400 dark:hover:border-stone-400 dark:hover:text-stone-100 {{ $isToday ? 'invisible' : '' }}">Today</a>
             </div>
-            <div class="mt-3 border-b-2 border-stone-300 dark:border-stone-700"></div>
+
+            {{-- Weekday strip — below the date so it never overflows on narrow screens --}}
+            <div class="mt-4 flex items-center gap-1.5 text-sm font-medium text-stone-400 dark:text-stone-500">
+                <span class="mr-1 text-[10px] uppercase tracking-[0.2em] text-stone-400 dark:text-stone-500">Day</span>
+                @foreach ($weekdays as $wd)
+                    <a href="{{ route('planner', ['date' => $wd['date']]) }}"
+                       aria-label="Go to {{ $wd['name'] }} this week"
+                       class="{{ $wd['active']
+                           ? 'flex h-7 w-7 items-center justify-center rounded-full border-2 border-rose-400 font-semibold text-stone-700 dark:text-stone-100'
+                           : 'flex h-7 w-7 items-center justify-center rounded-full transition-colors hover:bg-stone-100 hover:text-stone-700 dark:hover:bg-stone-800 dark:hover:text-stone-200' }}">{{ $wd['letter'] }}</a>
+                @endforeach
+            </div>
+            <div class="mt-4 border-b-2 border-stone-300 dark:border-stone-700"></div>
         </header>
 
         {{-- Check --}}
