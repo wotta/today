@@ -25,5 +25,14 @@
 </head>
 <body class="min-h-full font-sans antialiased">
     @yield('body')
+
+    {{-- Native bottom navigation (NativePHP EDGE) — renders as a real native
+         tab bar outside the web view; ignored in a plain browser. --}}
+    <native:bottom-nav label-visibility="labeled">
+        <native:bottom-nav-item id="today" icon="calendar" label="Today"
+            url="{{ route('planner') }}" :active="request()->routeIs('planner')" />
+        <native:bottom-nav-item id="settings" icon="settings" label="Settings"
+            url="{{ route('settings') }}" :active="request()->routeIs('settings')" />
+    </native:bottom-nav>
 </body>
 </html>
