@@ -24,24 +24,31 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: 8.3
+          php-version: 8.4
           tools: composer:v2
           coverage: xdebug
 
-      - name: Install Dependencies
+      - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
 
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: lts/*
+          bun-version: latest
 
-      - name: Install dependencies
-        run: npm ci
+      # JS deps (incl. the playwright npm package the Pest browser plugin drives)
+      # are managed by the bun workspace at the repo root.
+      - name: Install JS dependencies
+        working-directory: ${{ github.workspace }}
+        run: bun install --frozen-lockfile
 
-      - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
+      # Pest's browser plugin expects ./node_modules/.bin/playwright in the app
+      # root, which bun places per-workspace — install its browser binary.
+      - name: Install Playwright Chromium
+        run: ./node_modules/.bin/playwright install --with-deps chromium
+
+      # Browser tests hit the real rendered pages, so the Vite manifest must exist.
+      - name: Build assets
+        run: bun run build
 
       - name: Tests
-        run: ./vendor/bin/pest --ci --parallel
-
-
+        run: ./vendor/bin/pest --ci
