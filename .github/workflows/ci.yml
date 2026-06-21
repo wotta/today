@@ -50,7 +50,11 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      # Install from the extension workspace so the browser revision matches its
+      # pinned @playwright/test — bunx at the repo root would fetch latest and
+      # install a mismatched chromium build.
       - name: Install Playwright Chromium
+        working-directory: apps/extension
         run: bunx playwright install --with-deps chromium
 
       # Builds the extension, then runs the e2e suite against the built output.
