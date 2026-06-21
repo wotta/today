@@ -4,16 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Domain\DayRepository;
+use App\Domain\Planner\DayRepository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Today\Core\AgendaSlot;
 
 class PlannerController extends Controller
 {
-    public function __construct(private readonly DayRepository $days)
-    {
-    }
+    public function __construct(private readonly DayRepository $days) {}
 
     public function show(Request $request)
     {

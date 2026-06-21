@@ -1,15 +1,17 @@
-// Theme: 'light' | 'dark' | 'auto'. Persisted in localStorage; 'auto' follows the
-// device's prefers-color-scheme live. The actual light/dark switch is the `dark`
-// class on <html>, which the Tailwind `dark:` variant keys off (see app.css).
+// Theme: 'light' | 'dark' | 'auto'. Persisted server-side (settings table) so it
+// survives an app restart — the mobile web view can wipe localStorage. The
+// current choice lives on <html data-theme>; 'auto' follows the device's
+// prefers-color-scheme live. The actual light/dark switch is the `dark` class on
+// <html>, which the Tailwind `dark:` variant keys off (see app.css).
 //
 // A tiny no-FOUC bootstrap in the <head> applies the stored theme before paint;
 // this module owns runtime changes (toggle + live system updates).
 
-const STORAGE_KEY = 'today:theme';
+const VALID = ['light', 'dark', 'auto'];
 
 export function getTheme() {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored === 'light' || stored === 'dark' || stored === 'auto' ? stored : 'auto';
+    const stored = document.documentElement.dataset.theme;
+    return VALID.includes(stored) ? stored : 'auto';
 }
 
 export function systemPrefersDark() {
@@ -30,8 +32,21 @@ export function applyTheme(theme = getTheme()) {
 }
 
 export function setTheme(theme) {
-    localStorage.setItem(STORAGE_KEY, theme);
+    document.documentElement.dataset.theme = theme;
     applyTheme(theme);
+    // Persist server-side so the choice sticks across app restarts.
+    const token = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+    fetch('/api/theme', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': token,
+            Accept: 'application/json',
+        },
+        body: JSON.stringify({ theme }),
+    }).catch(() => {
+        // Offline — applied for this session; retries on the next change.
+    });
     window.dispatchEvent(new CustomEvent('today:theme-changed', { detail: { theme } }));
 }
 

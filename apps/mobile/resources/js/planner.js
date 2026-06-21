@@ -29,6 +29,9 @@ export function planner(initial) {
         agenda: normalizeAgenda(initial.agenda),
         draft: '',
         _timer: null,
+        // True while a local edit is pending/unsaved — a remote sync must not
+        // overwrite this panel's fields mid-edit.
+        dirty: false,
 
         get sortedItems() {
             return [...this.checkItems].sort((a, b) => a.order - b.order);
@@ -75,6 +78,7 @@ export function planner(initial) {
 
         // Debounced so rapid typing collapses into one write.
         persist() {
+            this.dirty = true;
             clearTimeout(this._timer);
             this._timer = setTimeout(() => this._save(), 400);
         },
@@ -95,9 +99,21 @@ export function planner(initial) {
                         agenda: this.agenda,
                     }),
                 });
+                this.dirty = false;
             } catch (e) {
-                // Offline / transient — local state stays; a later edit retries.
+                // Offline / transient — local state stays dirty; a later edit retries.
             }
+        },
+
+        // Apply a pulled remote change for THIS panel's date. Skipped while the
+        // panel is dirty so an in-flight local edit is never clobbered — the
+        // local store already holds the remote value, so a later navigation
+        // surfaces it.
+        applySync(detail) {
+            const entry = detail?.days?.[this.date];
+            if (!entry || this.dirty) return;
+            this.checkItems = entry.checkItems ?? [];
+            this.agenda = normalizeAgenda(entry.agenda);
         },
     };
 }

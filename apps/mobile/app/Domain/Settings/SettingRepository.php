@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Domain;
+namespace App\Domain\Settings;
 
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +15,15 @@ use Illuminate\Support\Facades\DB;
 class SettingRepository
 {
     private const PAT = 'gist_pat';
+
     private const GIST_ID = 'gist_id';
+
+    private const ETAG = 'gist_etag';
+
+    private const THEME = 'app_theme';
+
+    /** @var list<string> */
+    private const THEMES = ['light', 'dark', 'auto'];
 
     public function get(string $key): ?string
     {
@@ -59,5 +67,33 @@ class SettingRepository
     {
         $this->forget(self::PAT);
         $this->forget(self::GIST_ID);
+        $this->forget(self::ETAG);
+    }
+
+    /** Cached gist ETag for conditional GETs; null until a pull has run. */
+    public function gistEtag(): ?string
+    {
+        return $this->get(self::ETAG);
+    }
+
+    public function setGistEtag(?string $etag): void
+    {
+        $this->set(self::ETAG, $etag);
+    }
+
+    /**
+     * Appearance: 'light' | 'dark' | 'auto'. Stored server-side so the choice
+     * survives an app restart — the mobile web view may wipe localStorage.
+     */
+    public function theme(): string
+    {
+        $theme = $this->get(self::THEME);
+
+        return in_array($theme, self::THEMES, true) ? $theme : 'auto';
+    }
+
+    public function setTheme(string $theme): void
+    {
+        $this->set(self::THEME, in_array($theme, self::THEMES, true) ? $theme : 'auto');
     }
 }

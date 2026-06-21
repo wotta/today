@@ -4,22 +4,21 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Domain\DayRepository;
-use App\Domain\GistClient;
-use App\Domain\GistException;
-use App\Domain\SettingRepository;
+use App\Domain\Gist\GistClient;
+use App\Domain\Gist\GistException;
+use App\Domain\Gist\GistSync;
+use App\Domain\Settings\SettingRepository;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Today\Core\Day;
 
 class SettingsController extends Controller
 {
     public function __construct(
         private readonly SettingRepository $settings,
         private readonly GistClient $gist,
-        private readonly DayRepository $days,
-    ) {
-    }
+        private readonly GistSync $sync,
+    ) {}
 
     public function index()
     {
@@ -53,7 +52,7 @@ class SettingsController extends Controller
             }
 
             $this->settings->setGistConfig($pat, $id);
-            $imported = $this->importFromGist($pat, $id);
+            $imported = $this->sync->importAll($pat, $id);
 
             return back()->with('status', [
                 'kind' => 'connected',
@@ -62,6 +61,18 @@ class SettingsController extends Controller
         } catch (GistException $e) {
             return back()->with('status', ['kind' => 'error', 'message' => $e->userMessage()]);
         }
+    }
+
+    /** Persist the appearance choice so it survives an app restart. */
+    public function setTheme(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'theme' => ['required', 'in:light,dark,auto'],
+        ]);
+
+        $this->settings->setTheme($data['theme']);
+
+        return response()->json(['ok' => true]);
     }
 
     public function disconnectGist(): RedirectResponse
@@ -80,21 +91,11 @@ class SettingsController extends Controller
         }
 
         try {
-            $imported = $this->importFromGist($config['pat'], $config['gistId']);
+            $imported = $this->sync->importAll($config['pat'], $config['gistId']);
 
             return back()->with('status', ['kind' => 'connected', 'message' => "Synced — {$imported} days pulled"]);
         } catch (GistException $e) {
             return back()->with('status', ['kind' => 'error', 'message' => $e->userMessage()]);
         }
-    }
-
-    private function importFromGist(string $pat, string $gistId): int
-    {
-        $days = $this->gist->loadDays($pat, $gistId);
-        foreach ($days as $date => $entry) {
-            $this->days->save(Day::fromArray($entry));
-        }
-
-        return count($days);
     }
 }

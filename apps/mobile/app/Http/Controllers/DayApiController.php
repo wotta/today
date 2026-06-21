@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Domain\DayRepository;
-use App\Domain\GistClient;
-use App\Domain\GistException;
-use App\Domain\SettingRepository;
+use App\Domain\Gist\GistException;
+use App\Domain\Gist\GistSync;
+use App\Domain\Planner\DayRepository;
 use App\Http\Requests\SaveDayRequest;
 use Illuminate\Http\JsonResponse;
 use Today\Core\AgendaSlot;
@@ -17,10 +16,8 @@ class DayApiController extends Controller
 {
     public function __construct(
         private readonly DayRepository $days,
-        private readonly SettingRepository $settings,
-        private readonly GistClient $gist,
-    ) {
-    }
+        private readonly GistSync $sync,
+    ) {}
 
     /** Persist the full DayEntry for {date}. Route-constrains date to YYYY-MM-DD. */
     public function update(SaveDayRequest $request, string $date): JsonResponse
@@ -47,13 +44,10 @@ class DayApiController extends Controller
         // Best-effort push to the Gist so the extension/other devices see it.
         // A network/auth failure must not fail the local edit.
         $synced = false;
-        if ($config = $this->settings->gistConfig()) {
-            try {
-                $this->gist->putDay($config['pat'], $config['gistId'], $day);
-                $synced = true;
-            } catch (GistException) {
-                // swallow — local save already succeeded; sync retries on next edit
-            }
+        try {
+            $synced = $this->sync->pushDay($day);
+        } catch (GistException) {
+            // swallow — local save already succeeded; sync retries on next edit
         }
 
         return response()->json(['ok' => true, 'synced' => $synced]);

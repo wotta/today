@@ -7,16 +7,16 @@
 // Neighbour panels are fetched lazily (same local data, so effectively instant)
 // and Alpine renders their content just like the live page.
 
-const THRESHOLD = 70; // px of horizontal travel to commit
-const LOCK = 10; // px before the gesture is judged horizontal vs vertical
+const THRESHOLD = 100; // px of horizontal travel to commit the day change
+const LOCK = 18; // px of intent before the gesture is judged horizontal vs vertical
 
 export function initSwipe() {
     const main = document.querySelector('[data-swipe]');
-    if (!main) return;
+    if (!main) return null;
 
     // Touch-only enhancement; desktop keeps the plain page.
     const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    if (!isTouch) return;
+    if (!isTouch) return null;
 
     const prevUrl = main.dataset.prev || '';
     const nextUrl = main.dataset.next || '';
@@ -106,7 +106,9 @@ export function initSwipe() {
 
             if (axis === 'h') {
                 e.preventDefault(); // own the horizontal gesture; let vertical scroll
-                let d = dx;
+                // Start the slide from the activation point so the panel doesn't
+                // jump by LOCK px the moment the axis locks.
+                let d = dx - Math.sign(dx) * LOCK;
                 // Resist dragging toward an edge with no day to show.
                 if ((d > 0 && !prevUrl) || (d < 0 && !nextUrl)) d *= 0.2;
                 setX(-W + d, false);
@@ -144,4 +146,9 @@ export function initSwipe() {
         axis = null;
         dx = 0;
     });
+
+    // Expose the viewport so pull-to-refresh can nudge the whole carousel down
+    // (the track itself carries swipe's horizontal transform, so we move its
+    // parent instead).
+    return viewport;
 }
