@@ -249,8 +249,10 @@ describe('RichDescription', () => {
     render(<RichDescription value="seed" onChange={vi.fn()} ariaLabel="Description" draftId="a" />);
 
     // Opens straight into the editor (no read view), showing the draft content.
+    // The draft is seeded into the editor in a post-mount effect, so wait for it
+    // to land rather than asserting on the first (still-empty) paint.
     const input = await screen.findByLabelText('blocknote');
-    expect(input).toHaveValue('a draft from last time');
+    await waitFor(() => expect(input).toHaveValue('a draft from last time'));
     expect(screen.getByText('Unsaved draft')).toBeInTheDocument();
   });
 });
