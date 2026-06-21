@@ -1,4 +1,4 @@
-name: CI
+name: extension
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
 
 # Cancel superseded runs on the same ref/event.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  group: extension-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
