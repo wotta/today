@@ -51,7 +51,7 @@ jobs:
         run: bun run build
 
       - name: Tests
-        run: ./vendor/bin/pest --ci
+        run: ./vendor/bin/pest --ci --type-coverage --min=60
 
       # Browser tests run in their own pest process: the in-process test server
       # the Pest browser plugin boots doesn't coexist with the PHP suite in a
