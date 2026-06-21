@@ -52,3 +52,9 @@ jobs:
 
       - name: Tests
         run: ./vendor/bin/pest --ci
+
+      # Browser tests run in their own pest process: the in-process test server
+      # the Pest browser plugin boots doesn't coexist with the PHP suite in a
+      # single run.
+      - name: Browser tests
+        run: ./vendor/bin/pest tests/Browser --ci
