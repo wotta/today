@@ -11,7 +11,8 @@ export default defineConfig({
   workers: 1,
   timeout: 30_000,
   expect: { timeout: 7_000 },
-  reporter: process.env.CI ? 'github' : 'list',
+  // On CI also emit an HTML report so the failure artifact has something to upload.
+  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: {
     trace: 'on-first-retry',
   },
