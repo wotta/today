@@ -8,6 +8,7 @@ import { ConnectButton } from './components/ConnectButton';
 import { ImportExport } from './components/ImportExport';
 import { useDay } from './lib/useDay';
 import { isGistActive } from './lib/backend';
+import { getAgendaSlotMinutes, type AgendaSlotMinutes } from './lib/settings';
 import { noteHash, useRoute } from './lib/route';
 import { useTheme } from './lib/theme';
 import { useDateShortcuts } from './lib/useDateShortcuts';
@@ -41,6 +42,18 @@ function App() {
     let active = true;
     void isGistActive().then((on) => {
       if (active) setSyncLabel(on ? 'Gist' : undefined);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Opt-in finer agenda drop granularity (Options → Agenda): 60/30/15 min.
+  const [slotMinutes, setSlotMinutes] = useState<AgendaSlotMinutes>(60);
+  useEffect(() => {
+    let active = true;
+    void getAgendaSlotMinutes().then((m) => {
+      if (active) setSlotMinutes(m);
     });
     return () => {
       active = false;
@@ -103,6 +116,7 @@ function App() {
             slotNotes={entry.slotNotes}
             update={update}
             currentHour={currentAgendaHour(date)}
+            slotMinutes={slotMinutes}
           />
         </div>
       </main>

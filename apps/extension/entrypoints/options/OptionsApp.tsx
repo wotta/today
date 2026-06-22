@@ -2,12 +2,15 @@ import { useEffect, useState } from 'react';
 import {
   clearGistConfig,
   clearS3Config,
+  getAgendaSlotMinutes,
   getGistConfig,
   getRemindersEnabled,
   getS3Config,
+  setAgendaSlotMinutes,
   setGistConfig,
   setRemindersEnabled,
   setS3Config,
+  type AgendaSlotMinutes,
   type S3Config,
 } from '../newtab/lib/settings';
 import { GistError, createGist, findGistWithData, verifyGist } from '../newtab/lib/gist';
@@ -72,6 +75,7 @@ export function OptionsApp() {
   const [gistId, setGistId] = useState('');
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const [reminders, setReminders] = useState(true);
+  const [slotMinutes, setSlotMinutes] = useState<AgendaSlotMinutes>(60);
 
   // Pre-fill from any existing config.
   useEffect(() => {
@@ -82,11 +86,17 @@ export function OptionsApp() {
       setStatus({ kind: 'connected', gistId: config.gistId });
     });
     void getRemindersEnabled().then(setReminders);
+    void getAgendaSlotMinutes().then(setSlotMinutes);
   }, []);
 
   const toggleReminders = (enabled: boolean) => {
     setReminders(enabled);
     void setRemindersEnabled(enabled);
+  };
+
+  const changeSlotMinutes = (minutes: AgendaSlotMinutes) => {
+    setSlotMinutes(minutes);
+    void setAgendaSlotMinutes(minutes);
   };
 
   const save = async () => {
@@ -208,6 +218,26 @@ export function OptionsApp() {
               className="h-4 w-4 accent-stone-800 dark:accent-stone-100"
             />
             Notify me before scheduled items
+          </label>
+        </section>
+
+        <section className="mt-6 border-t border-stone-200 pt-5 dark:border-stone-700">
+          <h2 className="text-lg font-semibold tracking-tight">Agenda</h2>
+          <p className="mt-1 text-[13px] leading-snug text-stone-500 dark:text-stone-400">
+            How finely you can drop an item within an hour — e.g. pin it to 14:30 or
+            14:15 instead of only on the hour. Reminders follow the same grid.
+          </p>
+          <label className="mt-3 flex items-center gap-2 text-[13px] font-medium">
+            Drop granularity
+            <select
+              value={slotMinutes}
+              onChange={(e) => changeSlotMinutes(Number(e.target.value) as AgendaSlotMinutes)}
+              className="rounded-md border border-stone-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-stone-500 dark:border-stone-600 dark:bg-stone-800"
+            >
+              <option value={60}>On the hour</option>
+              <option value={30}>Every 30 minutes</option>
+              <option value={15}>Every 15 minutes</option>
+            </select>
           </label>
         </section>
 

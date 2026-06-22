@@ -20,6 +20,9 @@ vi.mock('../entrypoints/newtab/lib/useDay', () => ({
 vi.mock('../entrypoints/newtab/lib/backend', () => ({
   isGistActive: () => Promise.resolve(false),
 }));
+vi.mock('../entrypoints/newtab/lib/settings', () => ({
+  getAgendaSlotMinutes: () => Promise.resolve(60),
+}));
 
 import App from '../entrypoints/newtab/App';
 

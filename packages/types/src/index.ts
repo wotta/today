@@ -5,7 +5,9 @@ export interface CheckItem {
   order: number;
   /** Optional long-form detail shown in the item's view/edit modal. */
   description?: string;
-  /** Optional agenda hour (6–26) this item is pinned to. Absent = unpinned. */
+  /** Optional agenda slot (6–26) this item is pinned to, in 0.25-hour steps
+   *  (e.g. 14.5 = 14:30, 14.25 = 14:15). Whole numbers are on-the-hour.
+   *  Absent = unpinned. */
   slot?: number;
 }
 

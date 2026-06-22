@@ -93,6 +93,23 @@ describe('Agenda slot pinning', () => {
     expect(update).not.toHaveBeenCalled();
   });
 
+  it('renders a half-hour item in a :30 sub-band at 30-min granularity', () => {
+    renderAgenda({ slotMinutes: 30, checkItems: [item({ slot: 6.5 })] });
+
+    // The chip shows in the 6:00 row, alongside the row's :30 band label.
+    const chip = screen.getByText('Dit is een test');
+    expect(rowForHour(6).contains(chip)).toBe(true);
+    expect(rowForHour(6).textContent).toContain(':30');
+    // The geometry-driven drop itself is covered end-to-end in e2e/agenda-slots.
+  });
+
+  it('folds a legacy half-hour item onto the hour at on-the-hour granularity', () => {
+    renderAgenda({ slotMinutes: 60, checkItems: [item({ slot: 6.5 })] });
+
+    const chip = screen.getByText('Dit is een test');
+    expect(rowForHour(6).contains(chip)).toBe(true);
+  });
+
   it('unpins an item when its chip ✕ is clicked', async () => {
     const update = vi.fn();
     renderAgenda({ checkItems: [item({ slot: 6 })], update });

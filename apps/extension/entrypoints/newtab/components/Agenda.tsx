@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { DragEvent } from 'react';
 import type { CheckItem, DayEntry } from '@today/types';
 import { AGENDA_END_HOUR, AGENDA_START_HOUR, ITEM_DRAG_MIME } from '@today/types';
 import { hourLabel, isLateNight } from '../lib/date';
@@ -15,6 +16,8 @@ interface Props {
   update: (mutate: (prev: DayEntry) => DayEntry) => void;
   /** Hour to subtly mark as "now", or null when not viewing today. */
   currentHour: number | null;
+  /** Drop granularity in minutes: 60 (on the hour), 30, or 15. Default 60. */
+  slotMinutes?: number;
 }
 
 const HOURS = Array.from(
@@ -22,9 +25,20 @@ const HOURS = Array.from(
   (_, i) => AGENDA_START_HOUR + i,
 );
 
-export function Agenda({ date, agenda, checkItems, slotNotes, update, currentHour }: Props) {
-  // The hour currently hovered during a drag, for a drop-target highlight.
-  const [dropHour, setDropHour] = useState<number | null>(null);
+export function Agenda({
+  date,
+  agenda,
+  checkItems,
+  slotNotes,
+  update,
+  currentHour,
+  slotMinutes = 60,
+}: Props) {
+  // How many drop bands each hour splits into: 1 (on the hour), 2, or 4.
+  const divisions = Math.max(1, Math.round(60 / slotMinutes));
+  // The agenda slot currently hovered during a drag, for a drop-target
+  // highlight. Holds a fractional value (e.g. 14.5) when over a sub-hour band.
+  const [dropSlot, setDropSlot] = useState<number | null>(null);
   // The item whose view/edit dialog is open, if any.
   const [openId, setOpenId] = useState<string | null>(null);
   const openItem = checkItems.find((it) => it.id === openId) ?? null;
@@ -32,12 +46,25 @@ export function Agenda({ date, agenda, checkItems, slotNotes, update, currentHou
   const setHour = (hour: number, text: string) =>
     update((prev) => ({ ...prev, agenda: { ...prev.agenda, [hour]: text } }));
 
-  /** Pin a checklist item to an hour (or move it between hours). */
-  const pin = (id: string, hour: number) =>
+  /** Pin a checklist item to a slot (or move it between slots). */
+  const pin = (id: string, slot: number) =>
     update((prev) => ({
       ...prev,
-      checkItems: prev.checkItems.map((it) => (it.id === id ? { ...it, slot: hour } : it)),
+      checkItems: prev.checkItems.map((it) => (it.id === id ? { ...it, slot } : it)),
     }));
+
+  /**
+   * Resolve which slot a drag is over within an hour row. The row splits into
+   * `divisions` equal vertical bands; the band under the pointer maps to
+   * `hour + band / divisions` (e.g. the 3rd of 4 bands -> hour + 0.5 = 14:30).
+   */
+  const slotFromEvent = (hour: number, e: DragEvent<HTMLElement>): number => {
+    if (divisions <= 1) return hour;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const frac = (e.clientY - rect.top) / rect.height;
+    const band = Math.min(divisions - 1, Math.max(0, Math.floor(frac * divisions)));
+    return hour + band / divisions;
+  };
 
   const unpin = (id: string) =>
     update((prev) => ({
@@ -61,13 +88,14 @@ export function Agenda({ date, agenda, checkItems, slotNotes, update, currentHou
       checkItems: prev.checkItems.map((it) => (it.id === id ? { ...it, ...p } : it)),
     }));
 
-  // Group pinned items by their slot so each hour can render its chips.
-  const pinnedByHour = new Map<number, CheckItem[]>();
+  // Group pinned items by their exact slot (14 or 14.5) so each row can render
+  // its chips in the right half.
+  const pinnedBySlot = new Map<number, CheckItem[]>();
   for (const item of checkItems) {
     if (item.slot === undefined) continue;
-    const list = pinnedByHour.get(item.slot) ?? [];
+    const list = pinnedBySlot.get(item.slot) ?? [];
     list.push(item);
-    pinnedByHour.set(item.slot, list);
+    pinnedBySlot.set(item.slot, list);
   }
 
   return (
@@ -79,23 +107,45 @@ export function Agenda({ date, agenda, checkItems, slotNotes, update, currentHou
         {HOURS.map((hour) => {
           const even = hour % 2 === 0;
           const isNow = hour === currentHour;
-          const pinned = pinnedByHour.get(hour) ?? [];
           const hasNote = (slotNotes?.[hour] ?? '').trim() !== '';
+          // Chips for the on-the-hour band. When granularity is on-the-hour,
+          // fold in any legacy sub-hour items so they never silently disappear.
+          const hourChips =
+            divisions <= 1
+              ? checkItems.filter(
+                  (it) => it.slot !== undefined && it.slot >= hour && it.slot < hour + 1,
+                )
+              : pinnedBySlot.get(hour) ?? [];
+          // Sub-hour bands beneath the hour (e.g. :15 :30 :45), each droppable.
+          const subBands = Array.from({ length: divisions - 1 }, (_, i) => {
+            const band = i + 1;
+            return {
+              slot: hour + band / divisions,
+              minutes: Math.round((band / divisions) * 60),
+            };
+          });
+          // Highlight the band under the drag (whole-row tint handled below).
+          const zoneBg = (slot: number) =>
+            divisions > 1 && dropSlot === slot ? 'bg-amber-100/70 dark:bg-amber-400/15 ' : '';
           return (
             <li
               key={hour}
               onDragOver={(e) => {
                 if (!e.dataTransfer.types.includes(ITEM_DRAG_MIME)) return;
                 e.preventDefault();
-                if (dropHour !== hour) setDropHour(hour);
+                const slot = slotFromEvent(hour, e);
+                if (dropSlot !== slot) setDropSlot(slot);
               }}
-              onDragLeave={() => setDropHour((h) => (h === hour ? null : h))}
+              onDragLeave={() =>
+                setDropSlot((s) => (s !== null && s >= hour && s < hour + 1 ? null : s))
+              }
               onDrop={(e) => {
                 const id = e.dataTransfer.getData(ITEM_DRAG_MIME);
-                setDropHour(null);
+                const slot = slotFromEvent(hour, e);
+                setDropSlot(null);
                 if (!id) return;
                 e.preventDefault();
-                pin(id, hour);
+                pin(id, slot);
               }}
               className={
                 'group flex items-stretch ' +
@@ -103,7 +153,9 @@ export function Agenda({ date, agenda, checkItems, slotNotes, update, currentHou
                 (even
                   ? 'border-t border-stone-300 dark:border-stone-700 '
                   : 'border-t border-stone-200/60 dark:border-stone-700/40 ') +
-                (dropHour === hour
+                // When half-hour slots are off, tint the whole row on drag-over;
+                // when on, the inner zones light up individually instead.
+                (divisions <= 1 && dropSlot === hour
                   ? 'bg-amber-100/70 dark:bg-amber-400/15 '
                   : isNow
                     ? 'bg-amber-50/70 dark:bg-amber-400/10'
@@ -124,45 +176,80 @@ export function Agenda({ date, agenda, checkItems, slotNotes, update, currentHou
                 {even ? hourLabel(hour) : ''}
               </span>
               <div className="flex min-h-[34px] min-w-0 flex-1 flex-col justify-center py-1">
-                <div className="flex items-center">
-                  <input
-                    value={agenda[hour] ?? ''}
-                    onChange={(e) => setHour(hour, e.target.value)}
-                    className="flex-1 bg-transparent px-3 text-[15px] text-stone-700 outline-none dark:text-stone-200"
-                    aria-label={`Agenda at ${hourLabel(hour)}`}
-                  />
-                  {PER_SLOT_NOTES && (
-                    <button
-                      type="button"
-                      aria-label={`Open notes for ${hourLabel(hour)}`}
-                      title={hasNote ? 'This hour has notes' : 'Add notes for this hour'}
-                      onClick={() => {
-                        window.location.hash = noteHash(date, hour);
-                      }}
-                      className={
-                        'px-2 text-[13px] transition-opacity ' +
-                        (hasNote
-                          ? 'text-amber-600 dark:text-amber-400'
-                          : 'text-stone-300 opacity-0 hover:text-stone-600 focus-visible:opacity-100 group-hover:opacity-100 dark:text-stone-600 dark:hover:text-stone-300')
-                      }
-                    >
-                      ✎
-                    </button>
+                <div className={'rounded-sm ' + zoneBg(hour)}>
+                  <div className="flex items-center">
+                    <input
+                      value={agenda[hour] ?? ''}
+                      onChange={(e) => setHour(hour, e.target.value)}
+                      className="flex-1 bg-transparent px-3 text-[15px] text-stone-700 outline-none dark:text-stone-200"
+                      aria-label={`Agenda at ${hourLabel(hour)}`}
+                    />
+                    {PER_SLOT_NOTES && (
+                      <button
+                        type="button"
+                        aria-label={`Open notes for ${hourLabel(hour)}`}
+                        title={hasNote ? 'This hour has notes' : 'Add notes for this hour'}
+                        onClick={() => {
+                          window.location.hash = noteHash(date, hour);
+                        }}
+                        className={
+                          'px-2 text-[13px] transition-opacity ' +
+                          (hasNote
+                            ? 'text-amber-600 dark:text-amber-400'
+                            : 'text-stone-300 opacity-0 hover:text-stone-600 focus-visible:opacity-100 group-hover:opacity-100 dark:text-stone-600 dark:hover:text-stone-300')
+                        }
+                      >
+                        ✎
+                      </button>
+                    )}
+                  </div>
+                  {hourChips.length > 0 && (
+                    <div className="flex flex-wrap gap-1 px-3 pt-1">
+                      {hourChips.map((item) => (
+                        <Chip
+                          key={item.id}
+                          item={item}
+                          onToggle={() => toggle(item.id)}
+                          onUnpin={() => unpin(item.id)}
+                          onView={() => setOpenId(item.id)}
+                        />
+                      ))}
+                    </div>
                   )}
                 </div>
-                {pinned.length > 0 && (
-                  <div className="flex flex-wrap gap-1 px-3 pt-1">
-                    {pinned.map((item) => (
-                      <Chip
-                        key={item.id}
-                        item={item}
-                        onToggle={() => toggle(item.id)}
-                        onUnpin={() => unpin(item.id)}
-                        onView={() => setOpenId(item.id)}
-                      />
-                    ))}
-                  </div>
-                )}
+                {subBands.map(({ slot, minutes }) => {
+                  const chips = pinnedBySlot.get(slot) ?? [];
+                  return (
+                    <div
+                      key={slot}
+                      className={
+                        'mt-1 flex items-center gap-2 rounded-sm border-t border-dashed border-stone-200 px-3 pt-1 dark:border-stone-700/60 ' +
+                        zoneBg(slot)
+                      }
+                    >
+                      <span className="shrink-0 select-none text-[10px] tabular-nums text-stone-300 dark:text-stone-600">
+                        :{minutes.toString().padStart(2, '0')}
+                      </span>
+                      {chips.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {chips.map((item) => (
+                            <Chip
+                              key={item.id}
+                              item={item}
+                              onToggle={() => toggle(item.id)}
+                              onUnpin={() => unpin(item.id)}
+                              onView={() => setOpenId(item.id)}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-stone-300 opacity-0 transition-opacity group-hover:opacity-100 dark:text-stone-600">
+                          drop here for {hourLabel(slot)}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </li>
           );

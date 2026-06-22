@@ -1,4 +1,4 @@
-import { test as base, chromium, type BrowserContext } from '@playwright/test';
+import { test as base, chromium, type BrowserContext, type Locator, type Page } from '@playwright/test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -62,4 +62,57 @@ export async function openNewTab(context: BrowserContext, extensionId: string) {
   await page.getByRole('heading', { name: 'Check' }).waitFor();
   await page.waitForLoadState('networkidle');
   return page;
+}
+
+/**
+ * Fire a native HTML5 drag-and-drop from `source` to `target`. Playwright's
+ * mouse-based dragTo() does not drive the dataTransfer protocol the app's
+ * draggable chips/rows use, so we dispatch the DnD events ourselves, sharing
+ * one DataTransfer so the drop handler reads what dragstart wrote. `fractionDown`
+ * places the pointer within the target's height (for the agenda's sub-hour bands).
+ */
+export async function nativeDragAndDrop(
+  page: Page,
+  source: Locator,
+  target: Locator,
+  fractionDown = 0.5,
+) {
+  await target.scrollIntoViewIfNeeded();
+  const src = await source.elementHandle();
+  const tgt = await target.elementHandle();
+
+  // dragstart in its own step: some drop handlers (e.g. the checklist's reorder)
+  // read React state set during dragstart, which only flushes between ticks.
+  // The shared DataTransfer is stashed on window so the next step reads the same
+  // payload the dragstart handler wrote.
+  await page.evaluate((el) => {
+    const dt = new DataTransfer();
+    (window as unknown as { __dndDt: DataTransfer }).__dndDt = dt;
+    (el as Element).dispatchEvent(
+      new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }),
+    );
+  }, src);
+  await page.waitForTimeout(50);
+
+  await page.evaluate(
+    ({ el, frac }) => {
+      const dt = (window as unknown as { __dndDt: DataTransfer }).__dndDt;
+      const rect = (el as Element).getBoundingClientRect();
+      const clientX = rect.left + rect.width / 2;
+      const clientY = rect.top + rect.height * frac;
+      const fire = (type: string) =>
+        (el as Element).dispatchEvent(
+          new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: dt, clientX, clientY }),
+        );
+      fire('dragenter');
+      fire('dragover');
+      fire('drop');
+    },
+    { el: tgt, frac: fractionDown },
+  );
+
+  await page.evaluate((el) => {
+    const dt = (window as unknown as { __dndDt: DataTransfer }).__dndDt;
+    (el as Element).dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: dt }));
+  }, src);
 }
