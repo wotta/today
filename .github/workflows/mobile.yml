@@ -1,0 +1,60 @@
+name: Mobile
+
+on:
+  push:
+  pull_request:
+
+# Cancel superseded runs on the same ref/event.
+concurrency:
+  group: mobile-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: apps/mobile
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.4
+          tools: composer:v2
+          coverage: xdebug
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      # JS deps (incl. the playwright npm package the Pest browser plugin drives)
+      # are managed by the bun workspace at the repo root.
+      - name: Install JS dependencies
+        working-directory: ${{ github.workspace }}
+        run: bun install --frozen-lockfile
+
+      # Pest's browser plugin expects ./node_modules/.bin/playwright in the app
+      # root, which bun places per-workspace — install its browser binary.
+      - name: Install Playwright Chromium
+        run: ./node_modules/.bin/playwright install --with-deps chromium
+
+      # Browser tests hit the real rendered pages, so the Vite manifest must exist.
+      - name: Build assets
+        run: bun run build
+
+      - name: Tests
+        run: ./vendor/bin/pest --ci --type-coverage --min=60
+
+      # Browser tests run in their own pest process: the in-process test server
+      # the Pest browser plugin boots doesn't coexist with the PHP suite in a
+      # single run.
+      - name: Browser tests
+        run: ./vendor/bin/pest tests/Browser --ci

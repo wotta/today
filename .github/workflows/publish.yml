@@ -24,7 +24,7 @@ jobs:
       - name: Read target version from package.json
         id: target
         run: |
-          RAW=$(node -p "require('./package.json').version")
+          RAW=$(node -p "require('./apps/extension/package.json').version")
           # Chrome manifest versions are numeric-only; strip any pre-release suffix (-alpha etc).
           NORM=$(printf '%s' "$RAW" | grep -oP '^[0-9]+(\.[0-9]+){0,3}')
           echo "raw=$RAW"   >> "$GITHUB_OUTPUT"
@@ -72,6 +72,7 @@ jobs:
 
       - name: Build & zip (production)
         if: steps.decide.outputs.publish == 'true'
+        working-directory: apps/extension
         run: bun run zip:store
 
       - name: Submit to Chrome Web Store
@@ -82,4 +83,5 @@ jobs:
           CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
           CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
           CHROME_PUBLISH_TARGET: ${{ secrets.CHROME_PUBLISH_TARGET }}
+        working-directory: apps/extension
         run: bunx wxt submit --chrome-zip .output/*-chrome.zip
