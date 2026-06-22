@@ -111,3 +111,23 @@ export async function getRemindersEnabled(): Promise<boolean> {
 export async function setRemindersEnabled(enabled: boolean): Promise<void> {
   await browser.storage.local.set({ [REMINDERS_KEY]: enabled });
 }
+
+const SLOT_MINUTES_KEY = 'agendaSlotMinutes';
+
+/** Agenda drop granularity in minutes. 60 = on-the-hour only (the default). */
+export type AgendaSlotMinutes = 60 | 30 | 15;
+
+/**
+ * How finely the agenda lets you drop an item within an hour: 60 (on the hour),
+ * 30 (e.g. 14:30), or 15 (e.g. 14:15). Opt-in — defaults to 60 so the agenda
+ * stays on-the-hour unless the user picks finer placement.
+ */
+export async function getAgendaSlotMinutes(): Promise<AgendaSlotMinutes> {
+  const stored = await browser.storage.local.get([SLOT_MINUTES_KEY]);
+  const value = stored[SLOT_MINUTES_KEY];
+  return value === 30 || value === 15 ? value : 60;
+}
+
+export async function setAgendaSlotMinutes(minutes: AgendaSlotMinutes): Promise<void> {
+  await browser.storage.local.set({ [SLOT_MINUTES_KEY]: minutes });
+}

@@ -13,8 +13,10 @@ export const CheckItemSchema = z.object({
   order: z.number(),
   /** Optional long-form detail shown in the item's view/edit modal. */
   description: z.string().optional(),
-  /** Optional agenda hour (6–26) this item is pinned to. Absent = unpinned. */
-  slot: z.number().int().min(AGENDA_START_HOUR).max(AGENDA_END_HOUR).optional(),
+  /** Optional agenda slot (6–26) this item is pinned to, in 0.25-hour steps
+   *  (e.g. 14.5 = 14:30, 14.25 = 14:15). Whole numbers are on-the-hour.
+   *  Absent = unpinned. */
+  slot: z.number().multipleOf(0.25).min(AGENDA_START_HOUR).max(AGENDA_END_HOUR).optional(),
 });
 export type CheckItem = z.infer<typeof CheckItemSchema>;
 

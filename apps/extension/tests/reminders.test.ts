@@ -24,9 +24,30 @@ describe('upcomingSlot', () => {
     });
   });
 
-  it('returns null outside the lead window or exactly on the hour', () => {
-    expect(upcomingSlot(at(14, 49))).toBeNull();
-    expect(upcomingSlot(at(15, 0))).toBeNull();
+  it('returns null outside the lead window or exactly on a boundary', () => {
+    expect(upcomingSlot(at(14, 49))).toBeNull(); // next boundary 15:00 is 11 min off
+    expect(upcomingSlot(at(15, 0))).toBeNull(); // on a boundary -> next is 15:15
+  });
+
+  it('fires for quarter- and half-hour slots', () => {
+    // 14:20 -> 14:30 slot (14.5)
+    expect(upcomingSlot(at(14, 20))).toEqual({
+      dateKey: '2026-06-11',
+      slot: 14.5,
+      minutesUntil: 10,
+    });
+    // 14:05 -> 14:15 slot (14.25)
+    expect(upcomingSlot(at(14, 5))).toEqual({
+      dateKey: '2026-06-11',
+      slot: 14.25,
+      minutesUntil: 10,
+    });
+    // 14:40 -> 14:45 slot (14.75)
+    expect(upcomingSlot(at(14, 40))).toEqual({
+      dateKey: '2026-06-11',
+      slot: 14.75,
+      minutesUntil: 5,
+    });
   });
 
   it('maps late-night slots to the previous day (planner hours 24–26)', () => {

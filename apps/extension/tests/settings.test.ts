@@ -27,8 +27,10 @@ import {
   clearGistConfig,
   clearS3Config,
   getGistConfig,
+  getAgendaSlotMinutes,
   getRemindersEnabled,
   getS3Config,
+  setAgendaSlotMinutes,
   setGistConfig,
   setRemindersEnabled,
   setS3Config,
@@ -117,5 +119,23 @@ describe('reminders setting', () => {
     expect(await getRemindersEnabled()).toBe(false);
     await setRemindersEnabled(true);
     expect(await getRemindersEnabled()).toBe(true);
+  });
+});
+
+describe('agenda slot minutes setting', () => {
+  it('defaults to on-the-hour (60)', async () => {
+    expect(await getAgendaSlotMinutes()).toBe(60);
+  });
+
+  it('round-trips 30 and 15 through storage', async () => {
+    await setAgendaSlotMinutes(30);
+    expect(await getAgendaSlotMinutes()).toBe(30);
+    await setAgendaSlotMinutes(15);
+    expect(await getAgendaSlotMinutes()).toBe(15);
+  });
+
+  it('falls back to 60 for an unexpected stored value', async () => {
+    store.data.agendaSlotMinutes = 7;
+    expect(await getAgendaSlotMinutes()).toBe(60);
   });
 });

@@ -32,3 +32,22 @@ describe('CheckItem description', () => {
     expect(parsed.checkItems[0].description).toBe('long detail');
   });
 });
+
+describe('CheckItem slot', () => {
+  const base = { id: 'a', text: 'task', done: false, order: 0 };
+
+  it('accepts whole, half, and quarter-hour slots', () => {
+    expect(CheckItemSchema.parse({ ...base, slot: 14 }).slot).toBe(14);
+    expect(CheckItemSchema.parse({ ...base, slot: 14.5 }).slot).toBe(14.5);
+    expect(CheckItemSchema.parse({ ...base, slot: 14.25 }).slot).toBe(14.25);
+  });
+
+  it('rejects slots off the 0.25-hour grid', () => {
+    expect(() => CheckItemSchema.parse({ ...base, slot: 14.1 })).toThrow();
+  });
+
+  it('rejects slots outside the agenda range', () => {
+    expect(() => CheckItemSchema.parse({ ...base, slot: 5 })).toThrow();
+    expect(() => CheckItemSchema.parse({ ...base, slot: 27 })).toThrow();
+  });
+});

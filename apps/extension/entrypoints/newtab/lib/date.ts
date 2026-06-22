@@ -70,7 +70,10 @@ export function formatLongDate(key: string): string {
  * midnight stay 24:00 / 25:00 / 26:00 rather than wrapping to 0:00 / 2:00.
  */
 export function hourLabel(hour: number): string {
-  return `${hour}:00`;
+  // Fractional hours (e.g. 14.5) render as "14:30"; whole hours stay "14:00".
+  const h = Math.floor(hour);
+  const m = Math.round((hour - h) * 60);
+  return `${h}:${m.toString().padStart(2, '0')}`;
 }
 
 /** True if the agenda hour falls past midnight (24, 25, 26 -> next-day early hours). */
