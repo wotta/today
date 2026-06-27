@@ -14,51 +14,39 @@ class S3UploadService
 {
     public function __construct(private readonly SettingRepository $settings) {}
 
-    public function configured(): bool
-    {
-        return $this->settings->s3Config() !== null;
-    }
-
-    /** @return array{key:string,url:string,markdown:string} */
+    /**
+     * @return array{key: string, url: string, markdown: string}
+     */
     public function upload(UploadedFile $file): array
     {
-        $path = $file->getRealPath();
-        if ($path === false) {
-            throw new RuntimeException('Could not read the uploaded file.');
+        $contents = file_get_contents($file->getRealPath());
+        if ($contents === false) {
+            throw new RuntimeException('Could not read uploaded file.');
         }
 
-        $stream = fopen($path, 'rb');
-        if ($stream === false) {
-            throw new RuntimeException('Could not read the uploaded file.');
-        }
-
-        try {
-            return $this->put(
-                $file->getClientOriginalName() ?: 'file',
-                $stream,
-                $file->getMimeType() ?: 'application/octet-stream',
-            );
-        } finally {
-            fclose($stream);
-        }
+        return $this->put($file->getClientOriginalName(), $contents, $file->getMimeType() ?: 'application/octet-stream');
     }
 
-    /** @return array{key:string,url:string,markdown:string} */
+    /**
+     * @return array{key: string, url: string, markdown: string}
+     */
     public function testUpload(): array
     {
         return $this->put('today-upload-test.txt', 'today upload test', 'text/plain');
     }
 
-    /** @param resource|string $contents */
-    private function put(string $filename, mixed $contents, string $contentType): array
+    /**
+     * @return array{key: string, url: string, markdown: string}
+     */
+    private function put(string $filename, string $contents, string $contentType): array
     {
         $config = $this->settings->s3Config();
         if ($config === null) {
-            throw new RuntimeException('S3/R2 uploads are not configured.');
+            throw new RuntimeException('Object storage is not configured.');
         }
 
         $key = $this->objectKey($filename);
-        Storage::build([
+        $disk = Storage::build([
             'driver' => 's3',
             'key' => $config['accessKeyId'],
             'secret' => $config['secretAccessKey'],
@@ -67,7 +55,9 @@ class S3UploadService
             'endpoint' => $config['endpoint'],
             'use_path_style_endpoint' => true,
             'throw' => true,
-        ])->put($key, $contents, [
+        ]);
+
+        $disk->put($key, $contents, [
             'visibility' => 'public',
             'ContentType' => $contentType,
         ]);
@@ -77,23 +67,27 @@ class S3UploadService
         return [
             'key' => $key,
             'url' => $url,
-            'markdown' => $this->markdownFor($filename, $url, $contentType),
+            'markdown' => $this->markdown($url, $filename, $contentType),
         ];
     }
 
     private function objectKey(string $filename): string
     {
-        $safe = preg_replace('/[^a-zA-Z0-9._-]+/', '-', $filename) ?: 'file';
-        $safe = trim($safe, '-');
+        $safe = preg_replace('/[^a-zA-Z0-9._-]+/', '-', Str::ascii($filename));
+        $safe = trim((string) $safe, '-');
         $safe = substr($safe !== '' ? $safe : 'file', -80);
 
-        return 'today/'.Str::uuid()->toString().'-'.$safe;
+        return 'today/'.Str::uuid().'-'.$safe;
     }
 
-    private function markdownFor(string $filename, string $url, string $contentType): string
+    private function markdown(string $url, string $filename, string $contentType): string
     {
-        $label = trim(str_replace(["\r", "\n", '[', ']'], ' ', $filename)) ?: 'file';
+        $label = trim($filename) !== '' ? trim($filename) : 'file';
 
-        return str_starts_with($contentType, 'image/') ? "![{$label}]({$url})" : "[{$label}]({$url})";
+        if (str_starts_with($contentType, 'image/')) {
+            return "![{$label}]({$url})";
+        }
+
+        return "[{$label}]({$url})";
     }
 }

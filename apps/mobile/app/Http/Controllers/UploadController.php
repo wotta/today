@@ -21,14 +21,13 @@ class UploadController extends Controller
         ]);
 
         try {
-            return response()->json(['ok' => true] + $this->uploads->upload($data['file']));
+            $uploaded = $this->uploads->upload($data['file']);
+
+            return response()->json(['ok' => true, ...$uploaded]);
         } catch (RuntimeException $e) {
             return response()->json(['ok' => false, 'message' => $e->getMessage()], 422);
         } catch (Throwable) {
-            return response()->json([
-                'ok' => false,
-                'message' => 'Upload failed. Check the bucket, endpoint, and credentials.',
-            ], 502);
+            return response()->json(['ok' => false, 'message' => 'Upload failed. Check the bucket, endpoint, and credentials.'], 502);
         }
     }
 }

@@ -27,20 +27,12 @@ class SettingsController extends Controller
     public function index()
     {
         $config = $this->settings->gistConfig();
-        $s3Config = $this->settings->s3Config();
 
         return view('settings', [
             'connected' => $config !== null,
             'gistId' => $config['gistId'] ?? '',
-            's3Configured' => $s3Config !== null,
-            's3Config' => $s3Config ?? [
-                'endpoint' => '',
-                'bucket' => '',
-                'region' => 'auto',
-                'accessKeyId' => '',
-                'secretAccessKey' => '',
-                'publicBaseUrl' => '',
-            ],
+            's3Connected' => $this->settings->s3Config() !== null,
+            's3Config' => $this->settings->s3FormConfig(),
         ]);
     }
 
@@ -96,44 +88,6 @@ class SettingsController extends Controller
         return back()->with('status', ['kind' => 'idle', 'message' => 'Disconnected.']);
     }
 
-    public function saveS3(Request $request): RedirectResponse
-    {
-        $data = $request->validate($this->s3Rules());
-
-        $this->settings->setS3Config($data);
-
-        return back()->with('s3_status', ['kind' => 'saved', 'message' => 'Bucket settings saved.']);
-    }
-
-    public function testS3(Request $request): RedirectResponse
-    {
-        $data = $request->validate($this->s3Rules());
-        $this->settings->setS3Config($data);
-
-        try {
-            $result = $this->uploads->testUpload();
-
-            return back()->with('s3_status', [
-                'kind' => 'tested',
-                'message' => 'Upload works — test file: '.$result['url'],
-            ]);
-        } catch (RuntimeException $e) {
-            return back()->with('s3_status', ['kind' => 'error', 'message' => $e->getMessage()]);
-        } catch (Throwable) {
-            return back()->with('s3_status', [
-                'kind' => 'error',
-                'message' => 'Upload failed. Check the bucket, endpoint, and credentials.',
-            ]);
-        }
-    }
-
-    public function disconnectS3(): RedirectResponse
-    {
-        $this->settings->clearS3Config();
-
-        return back()->with('s3_status', ['kind' => 'idle', 'message' => 'Bucket settings cleared.']);
-    }
-
     /** Pull the latest days from the Gist into the local store. */
     public function syncNow(): RedirectResponse
     {
@@ -151,15 +105,53 @@ class SettingsController extends Controller
         }
     }
 
-    private function s3Rules(): array
+    public function saveS3Config(Request $request): RedirectResponse
     {
-        return [
+        $existing = $this->settings->s3Config();
+        $data = $request->validate([
             'endpoint' => ['required', 'url'],
             'bucket' => ['required', 'string'],
             'region' => ['nullable', 'string'],
-            'accessKeyId' => ['required', 'string'],
-            'secretAccessKey' => ['required', 'string'],
+            'accessKeyId' => [$existing ? 'nullable' : 'required', 'string'],
+            'secretAccessKey' => [$existing ? 'nullable' : 'required', 'string'],
             'publicBaseUrl' => ['required', 'url'],
-        ];
+        ]);
+
+        $this->settings->setS3Config([
+            'endpoint' => $data['endpoint'],
+            'bucket' => $data['bucket'],
+            'region' => $data['region'] ?? 'auto',
+            'accessKeyId' => $data['accessKeyId'] ?? '',
+            'secretAccessKey' => $data['secretAccessKey'] ?? '',
+            'publicBaseUrl' => $data['publicBaseUrl'],
+        ]);
+
+        return back()->with('status', ['kind' => 'connected', 'message' => 'Object storage settings saved.']);
+    }
+
+    public function disconnectS3(): RedirectResponse
+    {
+        $this->settings->clearS3Config();
+
+        return back()->with('status', ['kind' => 'idle', 'message' => 'Object storage disconnected.']);
+    }
+
+    public function testS3Upload(): RedirectResponse
+    {
+        try {
+            $uploaded = $this->uploads->testUpload();
+
+            return back()->with('status', [
+                'kind' => 'connected',
+                'message' => 'Test upload succeeded: '.$uploaded['url'],
+            ]);
+        } catch (RuntimeException $e) {
+            return back()->with('status', ['kind' => 'error', 'message' => $e->getMessage()]);
+        } catch (Throwable) {
+            return back()->with('status', [
+                'kind' => 'error',
+                'message' => 'Test upload failed. Check the bucket, endpoint, and credentials.',
+            ]);
+        }
     }
 }
