@@ -10,6 +10,13 @@ function uuid() {
 }
 
 /** Always return a plain {hour: text} object, dropping empty/missing entries. */
+const AGENDA_SLOT_MINUTES = [60, 30, 15];
+
+function normalizeSlotMinutes(minutes) {
+    const value = Number(minutes);
+    return AGENDA_SLOT_MINUTES.includes(value) ? value : 60;
+}
+
 function normalizeAgenda(input) {
     const out = {};
     if (input && typeof input === 'object') {
@@ -34,8 +41,10 @@ export function planner(initial) {
         agenda: normalizeAgenda(initial.agenda),
         note: initial.note ?? null,
         slotNotes: normalizeSlotNotes(initial.slotNotes),
+        agendaSlotMinutes: normalizeSlotMinutes(initial.agendaSlotMinutes),
         draft: '',
         _timer: null,
+        syncStatus: { state: 'idle', label: 'Synced' },
         // True while a local edit is pending/unsaved — a remote sync must not
         // overwrite this panel's fields mid-edit.
         dirty: false,
@@ -125,6 +134,14 @@ export function planner(initial) {
             this.agenda = normalizeAgenda(entry.agenda);
             this.note = entry.note ?? null;
             this.slotNotes = normalizeSlotNotes(entry.slotNotes);
+        },
+
+        setSyncStatus(detail) {
+            const state = detail?.state ?? 'idle';
+            this.syncStatus = {
+                state,
+                label: state === 'syncing' ? 'Syncing' : (state === 'error' ? 'Sync offline' : 'Synced'),
+            };
         },
     };
 }

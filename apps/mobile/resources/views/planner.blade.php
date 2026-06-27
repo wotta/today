@@ -14,8 +14,9 @@
          Dynamic Island); content is kept clear of the bezel via safe-area
          padding. Wider screens still cap the content column at max-w-xl. --}}
     <main
-        x-data="planner({ date: @js($date), checkItems: @js($initCheck), agenda: @js((object) $day->agenda), note: @js($day->note), slotNotes: @js((object) $day->slotNotes) })"
+        x-data="planner({ date: @js($date), checkItems: @js($initCheck), agenda: @js((object) $day->agenda), note: @js($day->note), slotNotes: @js((object) $day->slotNotes), agendaSlotMinutes: @js($agendaSlotMinutes) })"
         x-on:today:synced.window="applySync($event.detail)"
+        x-on:today:sync-status.window="setSyncStatus($event.detail)"
         data-swipe
         data-prev="{{ route('planner', ['date' => $prevDate]) }}"
         data-next="{{ route('planner', ['date' => $nextDate]) }}"
@@ -32,6 +33,24 @@
                 </div>
                 <a href="{{ route('planner', ['date' => $todayDate]) }}"
                    class="mt-1 shrink-0 rounded-full border border-stone-300 px-3 py-1 text-[12px] font-medium text-stone-500 transition-colors hover:border-stone-500 hover:text-stone-800 dark:border-stone-600 dark:text-stone-400 dark:hover:border-stone-400 dark:hover:text-stone-100 {{ $isToday ? 'invisible' : '' }}">Today</a>
+            </div>
+
+            <div class="mt-3 flex items-center justify-between gap-2">
+                <span class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium"
+                    :class="syncStatus.state === 'error'
+                        ? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-400/10 dark:text-amber-300'
+                        : (syncStatus.state === 'syncing'
+                            ? 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/30 dark:bg-sky-400/10 dark:text-sky-300'
+                            : 'border-stone-200 bg-white text-stone-400 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-500')">
+                    <span class="h-1.5 w-1.5 rounded-full"
+                        :class="syncStatus.state === 'error' ? 'bg-amber-500' : (syncStatus.state === 'syncing' ? 'bg-sky-500' : 'bg-emerald-500')"></span>
+                    <span x-text="syncStatus.label"></span>
+                </span>
+
+                <div class="inline-flex items-center gap-0.5 rounded-full border border-stone-200 bg-white/80 p-1 dark:border-stone-700 dark:bg-stone-800/80" aria-label="Theme quick toggle">
+                    <button type="button" data-set-theme="light" aria-pressed="false" class="rounded-full px-2.5 py-1 text-[11px] font-medium text-stone-500 aria-pressed:bg-stone-800 aria-pressed:text-white dark:text-stone-400 dark:aria-pressed:bg-stone-100 dark:aria-pressed:text-stone-900">Light</button>
+                    <button type="button" data-set-theme="dark" aria-pressed="false" class="rounded-full px-2.5 py-1 text-[11px] font-medium text-stone-500 aria-pressed:bg-stone-800 aria-pressed:text-white dark:text-stone-400 dark:aria-pressed:bg-stone-100 dark:aria-pressed:text-stone-900">Dark</button>
+                </div>
             </div>
 
             {{-- Week selector: each day taps to navigate; active = filled pill, today = rose --}}

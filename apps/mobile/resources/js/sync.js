@@ -11,21 +11,32 @@
 // "I want it now" case, so we poll the network rarely to spare battery/quota.
 const INTERVAL_MS = 5 * 60 * 1000;
 
+function dispatchSyncStatus(state) {
+    window.dispatchEvent(new CustomEvent('today:sync-status', { detail: { state } }));
+}
+
 /** Run one pull. Resolves once the response is applied (or skipped/failed). */
 export async function syncNow() {
+    dispatchSyncStatus('syncing');
     try {
         const res = await fetch('/api/sync', { headers: { Accept: 'application/json' } });
-        if (!res.ok) return;
+        if (!res.ok) {
+            dispatchSyncStatus('error');
+            return;
+        }
         const data = await res.json();
         if (Array.isArray(data.changed) && data.changed.length > 0) {
             window.dispatchEvent(new CustomEvent('today:synced', { detail: data }));
         }
+        dispatchSyncStatus('idle');
     } catch (e) {
         // Offline / transient — a later trigger retries.
+        dispatchSyncStatus('error');
     }
 }
 
 export function startGistSync() {
+    dispatchSyncStatus('idle');
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) syncNow();
     });

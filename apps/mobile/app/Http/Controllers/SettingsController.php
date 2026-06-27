@@ -7,10 +7,12 @@ namespace App\Http\Controllers;
 use App\Domain\Gist\GistClient;
 use App\Domain\Gist\GistException;
 use App\Domain\Gist\GistSync;
+use App\Domain\Planner\DayRepository;
 use App\Domain\Settings\SettingRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 class SettingsController extends Controller
 {
@@ -18,6 +20,7 @@ class SettingsController extends Controller
         private readonly SettingRepository $settings,
         private readonly GistClient $gist,
         private readonly GistSync $sync,
+        private readonly DayRepository $days,
     ) {}
 
     public function index()
@@ -27,6 +30,7 @@ class SettingsController extends Controller
         return view('settings', [
             'connected' => $config !== null,
             'gistId' => $config['gistId'] ?? '',
+            'agendaSlotMinutes' => $this->settings->agendaSlotMinutes(),
         ]);
     }
 
@@ -73,6 +77,60 @@ class SettingsController extends Controller
         $this->settings->setTheme($data['theme']);
 
         return response()->json(['ok' => true]);
+    }
+
+    /** Persist the planner agenda granularity choice. */
+    public function setAgendaSlotMinutes(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'agendaSlotMinutes' => ['required', 'integer', 'in:60,30,15'],
+        ]);
+
+        $this->settings->setAgendaSlotMinutes((int) $data['agendaSlotMinutes']);
+
+        return back()->with('status', ['kind' => 'connected', 'message' => 'Agenda granularity saved.']);
+    }
+
+    /** Download all locally stored planner days as the shared JSON envelope. */
+    public function exportPlanner(): Response
+    {
+        $content = json_encode([
+            'version' => 1,
+            'exportedAt' => now()->toIso8601String(),
+            'days' => $this->days->all(),
+        ], JSON_PRETTY_PRINT);
+
+        return response($content, 200, [
+            'Content-Type' => 'application/json',
+            'Content-Disposition' => 'attachment; filename="today-export-'.now()->toDateString().'.json"',
+        ]);
+    }
+
+    /** Import a shared JSON envelope and merge each incoming day locally. */
+    public function importPlanner(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'import' => ['required', 'file'],
+        ]);
+
+        $text = file_get_contents($data['import']->getRealPath());
+        $parsed = json_decode($text, true);
+        if (
+            ! is_array($parsed)
+            || ($parsed['version'] ?? null) !== 1
+            || ! is_array($parsed['days'] ?? null)
+        ) {
+            return back()->with('status', ['kind' => 'error', 'message' => 'Unrecognised import format.']);
+        }
+
+        $result = $this->days->merge($parsed['days']);
+        $imported = count($result['changed']);
+        $skipped = $result['skipped'];
+        $message = $imported === 0
+            ? "Nothing new — {$skipped} day".($skipped === 1 ? '' : 's').' skipped'
+            : "Imported {$imported} day".($imported === 1 ? '' : 's').($skipped > 0 ? ", skipped {$skipped}" : '');
+
+        return back()->with('status', ['kind' => 'connected', 'message' => $message]);
     }
 
     public function disconnectGist(): RedirectResponse

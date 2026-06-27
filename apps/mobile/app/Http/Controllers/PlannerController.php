@@ -5,13 +5,17 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Domain\Planner\DayRepository;
+use App\Domain\Settings\SettingRepository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Today\Core\AgendaSlot;
 
 class PlannerController extends Controller
 {
-    public function __construct(private readonly DayRepository $days) {}
+    public function __construct(
+        private readonly DayRepository $days,
+        private readonly SettingRepository $settings,
+    ) {}
 
     public function show(Request $request)
     {
@@ -56,6 +60,7 @@ class PlannerController extends Controller
             'currentHour' => $this->currentAgendaHour($date, $today),
             'startHour' => AgendaSlot::START_HOUR,
             'endHour' => AgendaSlot::END_HOUR,
+            'agendaSlotMinutes' => $this->settings->agendaSlotMinutes(),
         ]);
     }
 

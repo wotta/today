@@ -22,8 +22,13 @@ class SettingRepository
 
     private const THEME = 'app_theme';
 
+    private const AGENDA_SLOT_MINUTES = 'agenda_slot_minutes';
+
     /** @var list<string> */
     private const THEMES = ['light', 'dark', 'auto'];
+
+    /** @var list<int> */
+    private const AGENDA_SLOT_MINUTE_VALUES = [60, 30, 15];
 
     public function get(string $key): ?string
     {
@@ -95,5 +100,21 @@ class SettingRepository
     public function setTheme(string $theme): void
     {
         $this->set(self::THEME, in_array($theme, self::THEMES, true) ? $theme : 'auto');
+    }
+
+    /** Agenda UI granularity in minutes: 60 (default), 30, or 15. */
+    public function agendaSlotMinutes(): int
+    {
+        $minutes = (int) ($this->get(self::AGENDA_SLOT_MINUTES) ?? 60);
+
+        return in_array($minutes, self::AGENDA_SLOT_MINUTE_VALUES, true) ? $minutes : 60;
+    }
+
+    public function setAgendaSlotMinutes(int $minutes): void
+    {
+        $this->set(
+            self::AGENDA_SLOT_MINUTES,
+            (string) (in_array($minutes, self::AGENDA_SLOT_MINUTE_VALUES, true) ? $minutes : 60),
+        );
     }
 }
