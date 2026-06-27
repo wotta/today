@@ -8,9 +8,12 @@ use App\Domain\Gist\GistClient;
 use App\Domain\Gist\GistException;
 use App\Domain\Gist\GistSync;
 use App\Domain\Settings\SettingRepository;
+use App\Domain\Upload\S3UploadService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use RuntimeException;
+use Throwable;
 
 class SettingsController extends Controller
 {
@@ -18,6 +21,7 @@ class SettingsController extends Controller
         private readonly SettingRepository $settings,
         private readonly GistClient $gist,
         private readonly GistSync $sync,
+        private readonly S3UploadService $uploads,
     ) {}
 
     public function index()
@@ -27,6 +31,8 @@ class SettingsController extends Controller
         return view('settings', [
             'connected' => $config !== null,
             'gistId' => $config['gistId'] ?? '',
+            's3Connected' => $this->settings->s3Config() !== null,
+            's3Config' => $this->settings->s3FormConfig(),
         ]);
     }
 
@@ -96,6 +102,56 @@ class SettingsController extends Controller
             return back()->with('status', ['kind' => 'connected', 'message' => "Synced — {$imported} days pulled"]);
         } catch (GistException $e) {
             return back()->with('status', ['kind' => 'error', 'message' => $e->userMessage()]);
+        }
+    }
+
+    public function saveS3Config(Request $request): RedirectResponse
+    {
+        $existing = $this->settings->s3Config();
+        $data = $request->validate([
+            'endpoint' => ['required', 'url'],
+            'bucket' => ['required', 'string'],
+            'region' => ['nullable', 'string'],
+            'accessKeyId' => [$existing ? 'nullable' : 'required', 'string'],
+            'secretAccessKey' => [$existing ? 'nullable' : 'required', 'string'],
+            'publicBaseUrl' => ['required', 'url'],
+        ]);
+
+        $this->settings->setS3Config([
+            'endpoint' => $data['endpoint'],
+            'bucket' => $data['bucket'],
+            'region' => $data['region'] ?? 'auto',
+            'accessKeyId' => $data['accessKeyId'] ?? '',
+            'secretAccessKey' => $data['secretAccessKey'] ?? '',
+            'publicBaseUrl' => $data['publicBaseUrl'],
+        ]);
+
+        return back()->with('status', ['kind' => 'connected', 'message' => 'Object storage settings saved.']);
+    }
+
+    public function disconnectS3(): RedirectResponse
+    {
+        $this->settings->clearS3Config();
+
+        return back()->with('status', ['kind' => 'idle', 'message' => 'Object storage disconnected.']);
+    }
+
+    public function testS3Upload(): RedirectResponse
+    {
+        try {
+            $uploaded = $this->uploads->testUpload();
+
+            return back()->with('status', [
+                'kind' => 'connected',
+                'message' => 'Test upload succeeded: '.$uploaded['url'],
+            ]);
+        } catch (RuntimeException $e) {
+            return back()->with('status', ['kind' => 'error', 'message' => $e->getMessage()]);
+        } catch (Throwable) {
+            return back()->with('status', [
+                'kind' => 'error',
+                'message' => 'Test upload failed. Check the bucket, endpoint, and credentials.',
+            ]);
         }
     }
 }
