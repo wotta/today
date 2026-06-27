@@ -1,4 +1,5 @@
 import './theme';
+import './attachments';
 import Alpine from 'alpinejs';
 import { planner } from './planner';
 import { initSwipe } from './swipe';
