@@ -65,8 +65,10 @@
                             <span x-text="item.done ? '✓' : ''"></span>
                         </button>
                         <input :value="item.text" @input="editText(item.id, $event.target.value)"
-                            class="flex-1 bg-transparent text-[15px] outline-none placeholder:text-stone-300 dark:placeholder:text-stone-600"
+                            class="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-stone-300 dark:placeholder:text-stone-600"
                             :class="item.done ? 'text-stone-400 line-through dark:text-stone-500' : 'text-stone-700 dark:text-stone-200'" />
+                        <span x-show="item.slot != null" x-text="slotLabel(item.slot)"
+                            class="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium tabular-nums text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-200"></span>
                         <button type="button" aria-label="Move item up" @click="moveItem(item.id, -1)" :disabled="index === 0"
                             class="shrink-0 px-0.5 text-[13px] text-stone-300 transition-colors enabled:hover:text-stone-600 disabled:opacity-30 dark:text-stone-600 dark:enabled:hover:text-stone-300">↑</button>
                         <button type="button" aria-label="Move item down" @click="moveItem(item.id, 1)" :disabled="index === sortedItems.length - 1"
