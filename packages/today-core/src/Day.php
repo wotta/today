@@ -6,8 +6,8 @@ namespace Today\Core;
 
 /**
  * A single day's planner entry, keyed by ISO date. Mirrors the extension's
- * @today/types DayEntry. Agenda/slot-note maps are keyed by hour (6–26);
- * JSON object keys arrive as strings, so they are normalised to int here.
+ * @today/types DayEntry. Agenda/slot-note maps are keyed by agenda slot
+ * (6-26, quarter-hour precision). JSON object keys arrive as strings.
  */
 final class Day
 {
@@ -18,11 +18,11 @@ final class Day
         public readonly string $date,
         /** @var list<CheckItem> */
         public readonly array $checkItems = [],
-        /** @var array<int,string> hour => free text */
+        /** @var array<int|string,string> slot => free text */
         public readonly array $agenda = [],
         /** Freeform markdown note for the whole day. */
         public readonly ?string $note = null,
-        /** @var array<int,string> hour => markdown note */
+        /** @var array<int|string,string> slot => markdown note */
         public readonly array $slotNotes = [],
     ) {
         if (! preg_match(self::DATE_RE, $date)) {
@@ -60,12 +60,15 @@ final class Day
         ], static fn ($v) => $v !== null);
     }
 
-    /** @return array<int,string> */
+    /** @return array<int|string,string> */
     private static function intKeyed(array $map): array
     {
         $out = [];
-        foreach ($map as $hour => $text) {
-            $out[(int) $hour] = (string) $text;
+        foreach ($map as $slot => $text) {
+            $key = AgendaSlot::key($slot);
+            if ($key !== null) {
+                $out[$key] = (string) $text;
+            }
         }
 
         return $out;

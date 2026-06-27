@@ -20,6 +20,11 @@ function normalizeAgenda(input) {
     return out;
 }
 
+/** Same wire shape as agenda: a plain object keyed by agenda slot. */
+function normalizeSlotNotes(input) {
+    return normalizeAgenda(input);
+}
+
 export function planner(initial) {
     return {
         date: initial.date,
@@ -27,6 +32,8 @@ export function planner(initial) {
         // Coerce to a plain object: an empty PHP array serialises to a JS array,
         // and writing string keys to an array yields a sparse array (with nulls).
         agenda: normalizeAgenda(initial.agenda),
+        note: initial.note ?? null,
+        slotNotes: normalizeSlotNotes(initial.slotNotes),
         draft: '',
         _timer: null,
         // True while a local edit is pending/unsaved — a remote sync must not
@@ -97,6 +104,8 @@ export function planner(initial) {
                         date: this.date,
                         checkItems: this.checkItems,
                         agenda: this.agenda,
+                        note: this.note,
+                        slotNotes: this.slotNotes,
                     }),
                 });
                 this.dirty = false;
@@ -114,6 +123,8 @@ export function planner(initial) {
             if (!entry || this.dirty) return;
             this.checkItems = entry.checkItems ?? [];
             this.agenda = normalizeAgenda(entry.agenda);
+            this.note = entry.note ?? null;
+            this.slotNotes = normalizeSlotNotes(entry.slotNotes);
         },
     };
 }

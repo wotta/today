@@ -14,7 +14,7 @@
          Dynamic Island); content is kept clear of the bezel via safe-area
          padding. Wider screens still cap the content column at max-w-xl. --}}
     <main
-        x-data="planner({ date: @js($date), checkItems: @js($initCheck), agenda: @js((object) $day->agenda) })"
+        x-data="planner({ date: @js($date), checkItems: @js($initCheck), agenda: @js((object) $day->agenda), note: @js($day->note), slotNotes: @js((object) $day->slotNotes) })"
         x-on:today:synced.window="applySync($event.detail)"
         data-swipe
         data-prev="{{ route('planner', ['date' => $prevDate]) }}"

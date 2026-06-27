@@ -50,6 +50,16 @@ class DayRepository
             }
         }
 
-        return ($day->note ?? '') === '' && $day->slotNotes === [];
+        if (trim($day->note ?? '') !== '') {
+            return false;
+        }
+
+        foreach ($day->slotNotes as $text) {
+            if (trim($text) !== '') {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
