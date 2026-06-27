@@ -35,3 +35,14 @@ it('reflects the stored theme on page load', function () use ($darkClass, $dataT
         ->assertScript($darkClass, true)
         ->assertAriaAttribute('[data-set-theme="dark"]', 'pressed', 'true');
 });
+
+it('shows saved status after successfully saving a planner edit', function () {
+    $addTask = 'section:first-of-type li:last-child input';
+
+    visit('/')
+        ->type($addTask, 'Browser saved task')
+        ->keys($addTask, 'Enter')
+        ->wait(1)
+        ->assertSee('Saved locally')
+        ->assertNoJavaScriptErrors();
+});

@@ -118,7 +118,7 @@ export function planner(initial) {
         async _save() {
             const token = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
             try {
-                await fetch(`/api/day/${this.date}`, {
+                const res = await fetch(`/api/day/${this.date}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
