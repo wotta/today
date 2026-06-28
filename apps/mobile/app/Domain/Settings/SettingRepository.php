@@ -22,8 +22,13 @@ class SettingRepository
 
     private const THEME = 'app_theme';
 
+    private const AGENDA_GRANULARITY = 'agenda_granularity';
+
     /** @var list<string> */
     private const THEMES = ['light', 'dark', 'auto'];
+
+    /** @var list<int> */
+    private const AGENDA_GRANULARITIES = [60, 30, 15];
 
     public function get(string $key): ?string
     {
@@ -95,5 +100,20 @@ class SettingRepository
     public function setTheme(string $theme): void
     {
         $this->set(self::THEME, in_array($theme, self::THEMES, true) ? $theme : 'auto');
+    }
+
+    public function agendaGranularity(): int
+    {
+        $granularity = (int) ($this->get(self::AGENDA_GRANULARITY) ?? 60);
+
+        return in_array($granularity, self::AGENDA_GRANULARITIES, true) ? $granularity : 60;
+    }
+
+    public function setAgendaGranularity(int $minutes): void
+    {
+        $this->set(
+            self::AGENDA_GRANULARITY,
+            (string) (in_array($minutes, self::AGENDA_GRANULARITIES, true) ? $minutes : 60),
+        );
     }
 }

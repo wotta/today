@@ -16,6 +16,7 @@
     <main
         x-data="planner({ date: @js($date), checkItems: @js($initCheck), agenda: @js((object) $day->agenda), note: @js($day->note), slotNotes: @js((object) $day->slotNotes) })"
         x-on:today:synced.window="applySync($event.detail)"
+        x-on:today:sync-status.window="applySyncStatus($event.detail)"
         data-swipe
         data-prev="{{ route('planner', ['date' => $prevDate]) }}"
         data-next="{{ route('planner', ['date' => $nextDate]) }}"
@@ -30,8 +31,17 @@
                     <span class="block text-[13px] font-medium text-stone-500 dark:text-stone-400">{{ $weekdayName }}</span>
                     <span class="block whitespace-nowrap text-3xl font-semibold leading-tight tracking-tight text-stone-800 dark:text-stone-100">{{ $monthDay }}</span>
                 </div>
-                <a href="{{ route('planner', ['date' => $todayDate]) }}"
-                   class="mt-1 shrink-0 rounded-full border border-stone-300 px-3 py-1 text-[12px] font-medium text-stone-500 transition-colors hover:border-stone-500 hover:text-stone-800 dark:border-stone-600 dark:text-stone-400 dark:hover:border-stone-400 dark:hover:text-stone-100 {{ $isToday ? 'invisible' : '' }}">Today</a>
+                <div class="flex shrink-0 flex-col items-end gap-2">
+                    <a href="{{ route('planner', ['date' => $todayDate]) }}"
+                       class="rounded-full border border-stone-300 px-3 py-1 text-[12px] font-medium text-stone-500 transition-colors hover:border-stone-500 hover:text-stone-800 dark:border-stone-600 dark:text-stone-400 dark:hover:border-stone-400 dark:hover:text-stone-100 {{ $isToday ? 'invisible' : '' }}">Today</a>
+                    <span class="rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors" :class="syncStatusClass()" x-text="syncMessage"></span>
+                    <div class="inline-flex items-center rounded-full border border-stone-200 bg-white/80 p-0.5 shadow-sm dark:border-stone-700 dark:bg-stone-800/80">
+                        @foreach (['light' => 'L', 'auto' => 'A', 'dark' => 'D'] as $value => $label)
+                            <button type="button" data-set-theme="{{ $value }}" aria-pressed="false"
+                                class="rounded-full px-2 py-0.5 text-[11px] font-medium text-stone-500 transition-colors hover:text-stone-800 aria-pressed:bg-stone-800 aria-pressed:text-white dark:text-stone-400 dark:hover:text-stone-100 dark:aria-pressed:bg-stone-100 dark:aria-pressed:text-stone-900">{{ $label }}</button>
+                        @endforeach
+                    </div>
+                </div>
             </div>
 
             {{-- Week selector: each day taps to navigate; active = filled pill, today = rose --}}
@@ -84,19 +94,26 @@
 
         {{-- Agenda --}}
         <section class="mt-8">
-            <h2 class="mb-2 text-base font-semibold tracking-tight text-stone-700 dark:text-stone-200">Agenda</h2>
+            <div class="mb-2 flex items-baseline justify-between gap-3">
+                <h2 class="text-base font-semibold tracking-tight text-stone-700 dark:text-stone-200">Agenda</h2>
+                <span class="text-[11px] font-medium text-stone-400 dark:text-stone-500">{{ $agendaGranularity }} min</span>
+            </div>
             <ul>
-                @for ($hour = $startHour; $hour <= $endHour; $hour++)
-                    @php $even = $hour % 2 === 0; $isNow = $hour === $currentHour; @endphp
-                    <li class="flex items-stretch {{ $even ? 'border-t border-stone-300 dark:border-stone-700' : 'border-t border-stone-200/60 dark:border-stone-700/40' }} {{ $isNow ? 'bg-amber-50/70 dark:bg-amber-400/10' : '' }}">
-                        <span class="w-14 shrink-0 select-none border-r border-stone-300 py-1 pr-3 text-right text-[11px] tabular-nums dark:border-stone-700 {{ $even ? 'text-stone-400 dark:text-stone-500' : 'text-transparent' }} {{ $isNow ? '!text-amber-600 font-semibold dark:!text-amber-400' : '' }}">{{ $even ? sprintf('%d:00', $hour > 24 ? $hour - 24 : $hour) : '' }}</span>
-                        <div class="flex min-h-[34px] min-w-0 flex-1 items-center py-1">
-                            <input :value="agenda[{{ $hour }}] ?? ''" @input="setAgenda({{ $hour }}, $event.target.value)"
-                                aria-label="Agenda at {{ sprintf('%d:00', $hour > 24 ? $hour - 24 : $hour) }}"
+                @foreach ($agendaSlots as $slot)
+                    @php
+                        $major = $slot['major'];
+                        $isNow = $slot['key'] === $currentSlot;
+                        $rowHeight = $agendaGranularity === 15 ? 'min-h-[24px]' : ($agendaGranularity === 30 ? 'min-h-[28px]' : 'min-h-[34px]');
+                    @endphp
+                    <li class="flex items-stretch {{ $major ? 'border-t border-stone-300 dark:border-stone-700' : 'border-t border-stone-200/60 dark:border-stone-700/40' }} {{ $isNow ? 'bg-amber-50/70 dark:bg-amber-400/10' : '' }}">
+                        <span class="w-14 shrink-0 select-none border-r border-stone-300 py-1 pr-3 text-right text-[11px] tabular-nums dark:border-stone-700 {{ $major ? 'text-stone-400 dark:text-stone-500' : 'text-transparent' }} {{ $isNow ? '!text-amber-600 font-semibold dark:!text-amber-400' : '' }}">{{ $major ? $slot['label'] : '' }}</span>
+                        <div class="flex {{ $rowHeight }} min-w-0 flex-1 items-center py-0.5">
+                            <input :value="agenda[@js((string) $slot['key'])] ?? ''" @input="setAgenda(@js($slot['key']), $event.target.value)"
+                                aria-label="Agenda at {{ $slot['label'] }}"
                                 class="w-full bg-transparent px-3 text-[15px] text-stone-700 outline-none dark:text-stone-200" />
                         </div>
                     </li>
-                @endfor
+                @endforeach
                 <li class="border-t border-stone-300 dark:border-stone-700" aria-hidden></li>
             </ul>
         </section>

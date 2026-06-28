@@ -10,6 +10,12 @@
         <h1 class="text-xl font-semibold tracking-tight text-stone-800 dark:text-stone-100">Settings</h1>
     </div>
 
+    @if ($status)
+        <p class="mb-4 rounded-md border px-3 py-2 text-[13px] font-medium {{ $status['kind'] === 'error' ? 'border-red-200 bg-red-50 text-red-600 dark:border-red-700/60 dark:bg-red-400/10 dark:text-red-400' : ($status['kind'] === 'connected' ? 'border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-700/60 dark:bg-emerald-400/10 dark:text-emerald-400' : 'border-stone-200 bg-stone-50 text-stone-500 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-400') }}">
+            {{ $status['message'] }}
+        </p>
+    @endif
+
     {{-- Appearance --}}
     <section class="rounded-lg border border-stone-200 bg-white p-6 shadow-sm dark:border-stone-700 dark:bg-stone-900">
         <h2 class="text-lg font-semibold tracking-tight text-stone-800 dark:text-stone-100">Appearance</h2>
@@ -19,6 +25,35 @@
                 <button type="button" data-set-theme="{{ $value }}" aria-pressed="false"
                     class="rounded-full px-4 py-1.5 text-[13px] font-medium text-stone-500 transition-colors hover:text-stone-800 aria-pressed:bg-stone-800 aria-pressed:text-white dark:text-stone-400 dark:hover:text-stone-100 dark:aria-pressed:bg-stone-100 dark:aria-pressed:text-stone-900">{{ $label }}</button>
             @endforeach
+        </div>
+    </section>
+
+    {{-- Planner data --}}
+    <section class="mt-6 rounded-lg border border-stone-200 bg-white p-6 shadow-sm dark:border-stone-700 dark:bg-stone-900">
+        <h2 class="text-lg font-semibold tracking-tight text-stone-800 dark:text-stone-100">Planner</h2>
+        <p class="mt-1 text-[13px] leading-snug text-stone-500 dark:text-stone-400">Choose the agenda row size and move planner data with JSON files.</p>
+
+        <form method="POST" action="{{ route('settings.planner.granularity') }}" class="mt-5 flex flex-col gap-2">
+            @csrf
+            <label class="flex flex-col gap-1 text-[13px] font-medium text-stone-700 dark:text-stone-200">
+                Agenda granularity
+                <select name="agendaGranularity" class="rounded-md border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 outline-none focus:border-stone-500 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-100">
+                    @foreach ($agendaGranularities as $minutes)
+                        <option value="{{ $minutes }}" @selected($agendaGranularity === $minutes)>{{ $minutes }} minutes</option>
+                    @endforeach
+                </select>
+            </label>
+            <button type="submit" class="self-start rounded-md border border-stone-300 px-4 py-2 text-sm font-medium text-stone-600 transition-colors hover:border-stone-400 dark:border-stone-600 dark:text-stone-300">Save planner settings</button>
+        </form>
+
+        <div class="mt-5 flex flex-wrap items-center gap-3">
+            <a href="{{ route('settings.planner.export') }}" class="rounded-md bg-stone-800 px-4 py-2 text-sm font-medium text-stone-50 transition-colors hover:bg-stone-700 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-white">Export JSON</a>
+            <form method="POST" action="{{ route('settings.planner.import') }}" enctype="multipart/form-data" class="flex flex-wrap items-center gap-2">
+                @csrf
+                <input type="file" name="plannerData" accept=".json,application/json" required
+                    class="max-w-[13rem] text-[13px] text-stone-500 file:mr-3 file:rounded-md file:border-0 file:bg-stone-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-stone-700 dark:text-stone-400 dark:file:bg-stone-800 dark:file:text-stone-200" />
+                <button type="submit" class="rounded-md border border-stone-300 px-4 py-2 text-sm font-medium text-stone-600 transition-colors hover:border-stone-400 dark:border-stone-600 dark:text-stone-300">Import JSON</button>
+            </form>
         </div>
     </section>
 
@@ -68,11 +103,6 @@
             </div>
         @endif
 
-        @if ($status)
-            <p class="mt-4 text-[13px] font-medium {{ $status['kind'] === 'error' ? 'text-red-600 dark:text-red-400' : ($status['kind'] === 'connected' ? 'text-emerald-600 dark:text-emerald-400' : 'text-stone-500 dark:text-stone-400') }}">
-                {{ $status['message'] }}
-            </p>
-        @endif
     </section>
 </div>
 @endsection
