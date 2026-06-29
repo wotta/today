@@ -2,7 +2,7 @@ import { type Dispatch, type SetStateAction, useEffect } from 'react';
 import { addDays, todayKey } from './date';
 
 /** Text-entry targets where bare keys must keep their normal editing behavior. */
-function isEditable(el: EventTarget | null): boolean {
+export function isEditable(el: EventTarget | null): boolean {
   if (!(el instanceof HTMLElement)) return false;
   if (el.isContentEditable) return true;
   if (el.tagName === 'TEXTAREA') return true;

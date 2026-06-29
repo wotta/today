@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useDay } from '../lib/useDay';
 import { closeNote } from '../lib/route';
+import { isEditable } from '../lib/useDateShortcuts';
 import { withNote } from '../lib/notes';
 import { formatLongDate, hourLabel } from '../lib/date';
 import type { CheckItem } from '@today/types';
@@ -33,6 +34,17 @@ export function NotePage({ date, hour }: Props) {
     const timer = setTimeout(() => setShowSaved(false), SAVED_FLASH_MS);
     return () => clearTimeout(timer);
   }, [lastSaved]);
+
+  // Esc leaves the page — but only once the editor (or any field) is no longer
+  // focused, so the first Esc still just blurs the editor (see useDateShortcuts).
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Escape' || isEditable(e.target)) return;
+      closeNote();
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   const value = hour === undefined ? (entry.note ?? '') : (entry.slotNotes?.[hour] ?? '');
   const setValue = (text: string) => update((prev) => withNote(prev, hour, text));
