@@ -22,13 +22,13 @@ class SettingRepository
 
     private const THEME = 'app_theme';
 
-    private const AGENDA_GRANULARITY = 'agenda_granularity';
+    private const AGENDA_SLOT_MINUTES = 'agenda_slot_minutes';
 
     /** @var list<string> */
     private const THEMES = ['light', 'dark', 'auto'];
 
     /** @var list<int> */
-    private const AGENDA_GRANULARITIES = [60, 30, 15];
+    private const AGENDA_SLOT_MINUTE_VALUES = [60, 30, 15];
 
     public function get(string $key): ?string
     {
@@ -102,18 +102,19 @@ class SettingRepository
         $this->set(self::THEME, in_array($theme, self::THEMES, true) ? $theme : 'auto');
     }
 
-    public function agendaGranularity(): int
+    /** Agenda UI granularity in minutes: 60 (default), 30, or 15. */
+    public function agendaSlotMinutes(): int
     {
-        $granularity = (int) ($this->get(self::AGENDA_GRANULARITY) ?? 60);
+        $minutes = (int) ($this->get(self::AGENDA_SLOT_MINUTES) ?? 60);
 
-        return in_array($granularity, self::AGENDA_GRANULARITIES, true) ? $granularity : 60;
+        return in_array($minutes, self::AGENDA_SLOT_MINUTE_VALUES, true) ? $minutes : 60;
     }
 
-    public function setAgendaGranularity(int $minutes): void
+    public function setAgendaSlotMinutes(int $minutes): void
     {
         $this->set(
-            self::AGENDA_GRANULARITY,
-            (string) (in_array($minutes, self::AGENDA_GRANULARITIES, true) ? $minutes : 60),
+            self::AGENDA_SLOT_MINUTES,
+            (string) (in_array($minutes, self::AGENDA_SLOT_MINUTE_VALUES, true) ? $minutes : 60),
         );
     }
 }

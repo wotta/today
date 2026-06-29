@@ -12,7 +12,7 @@ use App\Domain\Settings\SettingRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Today\Core\Day;
+use Illuminate\Http\Response;
 
 class SettingsController extends Controller
 {
@@ -30,8 +30,7 @@ class SettingsController extends Controller
         return view('settings', [
             'connected' => $config !== null,
             'gistId' => $config['gistId'] ?? '',
-            'agendaGranularity' => $this->settings->agendaGranularity(),
-            'agendaGranularities' => [60, 30, 15],
+            'agendaSlotMinutes' => $this->settings->agendaSlotMinutes(),
         ]);
     }
 
@@ -80,67 +79,58 @@ class SettingsController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    public function setAgendaGranularity(Request $request): RedirectResponse
+    /** Persist the planner agenda granularity choice. */
+    public function setAgendaSlotMinutes(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'agendaGranularity' => ['required', 'integer', 'in:60,30,15'],
+            'agendaSlotMinutes' => ['required', 'integer', 'in:60,30,15'],
         ]);
 
-        $this->settings->setAgendaGranularity((int) $data['agendaGranularity']);
+        $this->settings->setAgendaSlotMinutes((int) $data['agendaSlotMinutes']);
 
-        return back()->with('status', [
-            'kind' => 'connected',
-            'message' => "Agenda granularity set to {$data['agendaGranularity']} minutes.",
-        ]);
+        return back()->with('status', ['kind' => 'connected', 'message' => 'Agenda granularity saved.']);
     }
 
-    public function exportPlannerData(): JsonResponse
+    /** Download all locally stored planner days as the shared JSON envelope. */
+    public function exportPlanner(): Response
     {
-        $filename = 'today-export-'.now()->toDateString().'.json';
-
-        return response()->json([
+        $content = json_encode([
             'version' => 1,
             'exportedAt' => now()->toIso8601String(),
-            'days' => $this->days->all() ?: (object) [],
-        ], 200, [
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'days' => $this->days->all(),
         ], JSON_PRETTY_PRINT);
+
+        return response($content, 200, [
+            'Content-Type' => 'application/json',
+            'Content-Disposition' => 'attachment; filename="today-export-'.now()->toDateString().'.json"',
+        ]);
     }
 
-    public function importPlannerData(Request $request): RedirectResponse
+    /** Import a shared JSON envelope and merge each incoming day locally. */
+    public function importPlanner(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'plannerData' => ['required', 'file', 'max:2048'],
+            'import' => ['required', 'file'],
         ]);
 
-        $text = file_get_contents($data['plannerData']->getRealPath());
-        $days = is_string($text) ? $this->decodePlannerDays($text) : null;
-        if ($days === null) {
-            return back()->with('status', ['kind' => 'error', 'message' => 'Import failed — unrecognised JSON format.']);
+        $text = file_get_contents($data['import']->getRealPath());
+        $parsed = json_decode($text, true);
+        if (
+            ! is_array($parsed)
+            || ($parsed['version'] ?? null) !== 1
+            || ! is_array($parsed['days'] ?? null)
+        ) {
+            return back()->with('status', ['kind' => 'error', 'message' => 'Unrecognised import format.']);
         }
 
-        $merged = 0;
-        $skipped = 0;
-        foreach ($days as $date => $entry) {
-            try {
-                $day = Day::fromArray($entry + ['date' => (string) $date]);
-            } catch (\Throwable) {
-                $skipped++;
+        $result = $this->days->merge($parsed['days']);
+        $imported = count($result['changed']);
+        $skipped = $result['skipped'];
+        $message = $imported === 0
+            ? "Nothing new — {$skipped} day".($skipped === 1 ? '' : 's').' skipped'
+            : "Imported {$imported} day".($imported === 1 ? '' : 's').($skipped > 0 ? ", skipped {$skipped}" : '');
 
-                continue;
-            }
-
-            if ($this->days->merge($day) === null) {
-                $skipped++;
-            } else {
-                $merged++;
-            }
-        }
-
-        return back()->with('status', [
-            'kind' => 'connected',
-            'message' => "Imported {$merged} day".($merged === 1 ? '' : 's').($skipped > 0 ? ", skipped {$skipped}" : '').'.',
-        ]);
+        return back()->with('status', ['kind' => 'connected', 'message' => $message]);
     }
 
     public function disconnectGist(): RedirectResponse

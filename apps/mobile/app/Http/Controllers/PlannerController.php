@@ -58,9 +58,8 @@ class PlannerController extends Controller
             'todayDate' => $today->toDateString(),
             'isToday' => $date->isSameDay($today),
             'weekdays' => $weekdays,
-            'currentSlot' => $this->currentAgendaSlot($date, $today, $agendaGranularity),
-            'agendaGranularity' => $agendaGranularity,
-            'agendaSlots' => $this->agendaSlots($agendaGranularity),
+            'currentHour' => $this->currentAgendaHour($date, $today),
+            'agendaSlotMinutes' => $this->settings->agendaSlotMinutes(),
         ]);
     }
 

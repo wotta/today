@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domain\Planner;
 
 use App\Models\DayRecord;
-use Today\Core\CheckItem;
 use Today\Core\Day;
 
 /**
@@ -51,122 +50,122 @@ class DayRepository
         );
     }
 
-    /** Merge an imported/synced day into the local day, preserving both sides. */
-    public function merge(Day $incoming): ?Day
+    /**
+     * Merge external DayEntry payloads into local days without treating omitted
+     * fields as deletes. Returns changed payloads for the planner to patch.
+     *
+     * @param  array<string, array>  $incoming
+     * @return array{changed: list<string>, days: array<string, array>, skipped: int}
+     */
+    public function merge(array $incoming): array
     {
-        $local = $this->load($incoming->date);
-        $merged = $this->mergeDay($local, $incoming);
+        $changed = [];
+        $payloads = [];
+        $skipped = 0;
 
-        if ($merged->toArray() === $local->toArray()) {
-            return null;
+        foreach ($incoming as $date => $entry) {
+            if (! is_array($entry)) {
+                $skipped++;
+                continue;
+            }
+
+            $date = (string) ($entry['date'] ?? $date);
+            if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+                $skipped++;
+                continue;
+            }
+
+            try {
+                $merged = Day::fromArray($this->mergePayload($this->load($date)->toArray(), $entry + ['date' => $date]));
+            } catch (\Throwable) {
+                $skipped++;
+                continue;
+            }
+
+            $payload = $merged->toArray();
+            if ($payload === $this->load($date)->toArray()) {
+                $skipped++;
+                continue;
+            }
+
+            $this->save($merged);
+            $changed[] = $date;
+            $payloads[$date] = $payload;
         }
 
-        $this->save($merged);
+        return ['changed' => $changed, 'days' => $payloads, 'skipped' => $skipped];
+    }
+
+    /** @param array<string,mixed> $local @param array<string,mixed> $incoming */
+    private function mergePayload(array $local, array $incoming): array
+    {
+        $merged = $local + [
+            'date' => (string) $incoming['date'],
+            'checkItems' => [],
+            'agenda' => [],
+        ];
+        $merged['date'] = (string) $incoming['date'];
+
+        if (array_key_exists('checkItems', $incoming) && is_array($incoming['checkItems'])) {
+            $merged['checkItems'] = $this->mergeCheckItems($local['checkItems'] ?? [], $incoming['checkItems']);
+        }
+
+        if (array_key_exists('agenda', $incoming) && is_array($incoming['agenda'])) {
+            $merged['agenda'] = $this->mergeTextMap($local['agenda'] ?? [], $incoming['agenda']);
+        }
+
+        if (array_key_exists('note', $incoming)) {
+            if ($incoming['note'] === null) {
+                unset($merged['note']);
+            } else {
+                $merged['note'] = (string) $incoming['note'];
+            }
+        }
+
+        if (array_key_exists('slotNotes', $incoming) && is_array($incoming['slotNotes'])) {
+            $merged['slotNotes'] = $this->mergeTextMap($local['slotNotes'] ?? [], $incoming['slotNotes']);
+        }
 
         return $merged;
     }
 
-    private function mergeDay(Day $local, Day $incoming): Day
-    {
-        return new Day(
-            date: $local->date,
-            checkItems: $this->mergeCheckItems($local->checkItems, $incoming->checkItems),
-            agenda: $this->mergeSlotMap($local->agenda, $incoming->agenda),
-            note: $this->mergeText($local->note, $incoming->note),
-            slotNotes: $this->mergeSlotMap($local->slotNotes, $incoming->slotNotes),
-        );
-    }
-
-    /**
-     * @param  list<CheckItem>  $local
-     * @param  list<CheckItem>  $incoming
-     * @return list<CheckItem>
-     */
+    /** @param list<array<string,mixed>> $local @param list<array<string,mixed>> $incoming */
     private function mergeCheckItems(array $local, array $incoming): array
     {
-        $items = array_map(static fn (CheckItem $item) => $item->toArray(), $local);
-        $indexes = [];
-        $maxOrder = -1;
-
-        foreach ($items as $index => $item) {
-            $indexes[$item['id']] = $index;
-            $maxOrder = max($maxOrder, (int) ($item['order'] ?? 0));
+        $byId = [];
+        foreach ($local as $item) {
+            if (is_array($item) && isset($item['id'])) {
+                $byId[(string) $item['id']] = $item;
+            }
         }
 
         foreach ($incoming as $item) {
-            $data = $item->toArray();
-            $id = $data['id'];
-
-            if (! array_key_exists($id, $indexes)) {
-                $data['order'] = ++$maxOrder;
-                $indexes[$id] = count($items);
-                $items[] = $data;
-
+            if (! is_array($item) || ! isset($item['id']) || (string) $item['id'] === '') {
                 continue;
             }
 
-            $items[$indexes[$id]] = $this->mergeCheckItem($items[$indexes[$id]], $data);
+            $id = (string) $item['id'];
+            $byId[$id] = array_key_exists($id, $byId)
+                ? array_merge($byId[$id], $item)
+                : $item;
         }
 
-        usort($items, static fn (array $a, array $b) => ((int) $a['order']) <=> ((int) $b['order']));
-
-        return array_map(static fn (array $item) => CheckItem::fromArray($item), $items);
+        return array_values($byId);
     }
 
-    /** @param array<string, mixed> $local @param array<string, mixed> $incoming */
-    private function mergeCheckItem(array $local, array $incoming): array
-    {
-        if (trim((string) ($local['description'] ?? '')) === '' && trim((string) ($incoming['description'] ?? '')) !== '') {
-            $local['description'] = $incoming['description'];
-        } elseif (($local['description'] ?? null) !== ($incoming['description'] ?? null)) {
-            $local['description'] = $this->mergeText($local['description'] ?? null, $incoming['description'] ?? null);
-        }
-
-        if (! array_key_exists('slot', $local) && array_key_exists('slot', $incoming)) {
-            $local['slot'] = $incoming['slot'];
-        }
-
-        return $local;
-    }
-
-    /** @param array<int|string, string> $local @param array<int|string, string> $incoming */
-    private function mergeSlotMap(array $local, array $incoming): array
+    /** @param array<int|string,string> $local @param array<int|string,mixed> $incoming */
+    private function mergeTextMap(array $local, array $incoming): array
     {
         $merged = $local;
-
         foreach ($incoming as $slot => $text) {
-            if (trim((string) $text) === '') {
-                continue;
-            }
-
-            if (! array_key_exists($slot, $merged) || trim((string) $merged[$slot]) === '') {
-                $merged[$slot] = $text;
-
-                continue;
-            }
-
-            if ($merged[$slot] !== $text) {
-                $merged[$slot] = (string) $this->mergeText((string) $merged[$slot], (string) $text);
+            if ($text === null || trim((string) $text) === '') {
+                unset($merged[$slot]);
+            } else {
+                $merged[$slot] = (string) $text;
             }
         }
 
         return $merged;
-    }
-
-    private function mergeText(?string $local, ?string $incoming): ?string
-    {
-        $localText = trim($local ?? '');
-        $incomingText = trim($incoming ?? '');
-
-        if ($localText === '') {
-            return $incomingText === '' ? null : $incoming;
-        }
-
-        if ($incomingText === '' || $localText === $incomingText) {
-            return $local;
-        }
-
-        return rtrim((string) $local)."\n\n".ltrim((string) $incoming);
     }
 
     private function isEmpty(Day $day): bool

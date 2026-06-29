@@ -37,6 +37,13 @@ function normalizeSlot(slot) {
     return Number(slotKey(rounded));
 }
 
+const AGENDA_SLOT_MINUTES = [60, 30, 15];
+
+function normalizeSlotMinutes(minutes) {
+    const value = Number(minutes);
+    return AGENDA_SLOT_MINUTES.includes(value) ? value : 60;
+}
+
 /** Always return a plain {slot: text} object, dropping empty/missing entries. */
 function normalizeAgenda(input) {
     const out = {};
@@ -69,11 +76,11 @@ export function planner(initial) {
         note: initial.note ?? null,
         slotNotes: normalizeSlotNotes(initial.slotNotes),
         currentHour: initial.currentHour ?? null,
+        agendaSlotMinutes: normalizeSlotMinutes(initial.agendaSlotMinutes),
         draft: '',
         openItemId: null,
         _timer: null,
-        syncStatus: 'idle',
-        syncMessage: 'Ready',
+        syncStatus: { state: 'idle', label: 'Synced' },
         // True while a local edit is pending/unsaved — a remote sync must not
         // overwrite this panel's fields mid-edit.
         dirty: false,
@@ -195,18 +202,14 @@ export function planner(initial) {
             this.persist();
         },
 
-        applySyncStatus(detail) {
-            this.syncStatus = detail?.kind ?? 'idle';
-            this.syncMessage = detail?.message ?? 'Ready';
+        setSyncStatus(detail) {
+            const state = detail?.state ?? detail?.kind ?? 'idle';
+            const labels = { syncing: 'Saving…', synced: 'Synced', saved: 'Saved', error: 'Error' };
+            this.syncStatus = { state, label: labels[state] ?? 'Synced' };
         },
 
-        syncStatusClass() {
-            return {
-                syncing: 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-700/60 dark:bg-sky-400/10 dark:text-sky-300',
-                synced: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-700/60 dark:bg-emerald-400/10 dark:text-emerald-300',
-                saved: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-700/60 dark:bg-amber-400/10 dark:text-amber-300',
-                error: 'border-red-200 bg-red-50 text-red-700 dark:border-red-700/60 dark:bg-red-400/10 dark:text-red-300',
-            }[this.syncStatus] ?? 'border-stone-200 bg-stone-50 text-stone-500 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-400';
+        applySyncStatus(detail) {
+            this.setSyncStatus(detail);
         },
 
         setNote(text) {
@@ -289,6 +292,14 @@ export function planner(initial) {
             this.agenda = normalizeAgenda(entry.agenda);
             this.note = entry.note ?? null;
             this.slotNotes = normalizeSlotNotes(entry.slotNotes);
+        },
+
+        setSyncStatus(detail) {
+            const state = detail?.state ?? 'idle';
+            this.syncStatus = {
+                state,
+                label: state === 'syncing' ? 'Syncing' : (state === 'error' ? 'Sync offline' : 'Synced'),
+            };
         },
     };
 }

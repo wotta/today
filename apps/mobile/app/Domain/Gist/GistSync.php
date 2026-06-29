@@ -53,7 +53,7 @@ class GistSync
                 return ['changed' => [], 'days' => []];
             }
 
-            $merged = $this->merge($res['days']);
+            $merged = $this->days->merge($res['days']);
             $this->settings->setGistEtag($res['etag']);
 
             return $merged;
@@ -98,39 +98,13 @@ class GistSync
         try {
             return (int) Cache::lock(self::LOCK, 10)->block(5, function () use ($pat, $gistId) {
                 $res = $this->gist->pull($pat, $gistId);
-                $this->merge($res['days']);
+                $merged = $this->days->merge($res['days']);
                 $this->settings->setGistEtag($res['etag']);
 
-                return count($res['days']);
+                return count($merged['changed']);
             });
         } catch (LockTimeoutException) {
             throw new GistException('unknown', 0, 'Sync is busy — try again in a moment.');
         }
-    }
-
-    /**
-     * Merge remote days into the local store, skipping ones already identical.
-     *
-     * @param  array<string, array>  $remote
-     * @return array{changed: list<string>, days: array<string, array>}
-     */
-    private function merge(array $remote): array
-    {
-        $changed = [];
-        $payloads = [];
-
-        foreach ($remote as $date => $entry) {
-            $remoteDay = Day::fromArray($entry + ['date' => (string) $date]);
-            $merged = $this->days->merge($remoteDay);
-
-            if ($merged === null) {
-                continue; // unchanged — no write, don't report it
-            }
-
-            $changed[] = (string) $date;
-            $payloads[(string) $date] = $merged->toArray();
-        }
-
-        return ['changed' => $changed, 'days' => $payloads];
     }
 }
