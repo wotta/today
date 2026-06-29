@@ -32,7 +32,7 @@ jobs:
           echo "Target: $RAW -> $NORM"
 
       - name: Read published (draft) version from Chrome Web Store
-        id: store
+        id: store_chrome
         env:
           CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
           CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
@@ -51,37 +51,59 @@ jobs:
           echo "store crxVersion: $LIVE"
           echo "version=$LIVE" >> "$GITHUB_OUTPUT"
 
-      - name: Decide whether to publish
-        id: decide
+      - name: Read current version from Firefox Add-ons
+        id: store_firefox
+        env:
+          FIREFOX_EXTENSION_ID: ${{ secrets.FIREFOX_EXTENSION_ID }}
+        run: |
+          RESP=$(curl -s "https://addons.mozilla.org/api/v5/addons/addon/${FIREFOX_EXTENSION_ID}/")
+          LIVE=$(printf '%s' "$RESP" | grep -oP '"version":\s*"\K[^"]+' | head -1)
+          echo "AMO version: $LIVE"
+          echo "version=$LIVE" >> "$GITHUB_OUTPUT"
+
+      - name: Decide whether to publish Chrome
+        id: decide_chrome
         run: |
           T="${{ steps.target.outputs.version }}"
-          S="${{ steps.store.outputs.version }}"
+          S="${{ steps.store_chrome.outputs.version }}"
           if [ -z "$T" ]; then echo "::error::could not parse target version"; exit 1; fi
-          # publish only if T is strictly greater than S (semver-ish via sort -V)
           if [ "$T" != "$S" ] && [ "$(printf '%s\n%s\n' "$T" "$S" | sort -V | tail -1)" = "$T" ]; then
             echo "publish=true" >> "$GITHUB_OUTPUT"
-            echo "Repo $T > store $S -> will publish"
+            echo "Chrome: repo $T > store $S -> will publish"
           else
             echo "publish=false" >> "$GITHUB_OUTPUT"
-            echo "Repo $T vs store $S -> nothing to do"
+            echo "Chrome: repo $T vs store $S -> nothing to do"
+          fi
+
+      - name: Decide whether to publish Firefox
+        id: decide_firefox
+        run: |
+          T="${{ steps.target.outputs.version }}"
+          S="${{ steps.store_firefox.outputs.version }}"
+          if [ "$T" != "$S" ] && [ "$(printf '%s\n%s\n' "$T" "$S" | sort -V | tail -1)" = "$T" ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "Firefox: repo $T > AMO $S -> will publish"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "Firefox: repo $T vs AMO $S -> nothing to do"
           fi
 
       - name: Install dependencies
-        if: steps.decide.outputs.publish == 'true'
+        if: steps.decide_chrome.outputs.publish == 'true' || steps.decide_firefox.outputs.publish == 'true'
         run: bun install --frozen-lockfile
 
       - name: Build & zip Chrome (production)
-        if: steps.decide.outputs.publish == 'true'
+        if: steps.decide_chrome.outputs.publish == 'true'
         working-directory: apps/extension
         run: bun run zip:store
 
       - name: Build & zip Firefox
-        if: steps.decide.outputs.publish == 'true'
+        if: steps.decide_firefox.outputs.publish == 'true'
         working-directory: apps/extension
         run: bun run zip:firefox
 
       - name: Submit to Chrome Web Store
-        if: steps.decide.outputs.publish == 'true'
+        if: steps.decide_chrome.outputs.publish == 'true'
         env:
           CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
           CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
@@ -92,7 +114,7 @@ jobs:
         run: bunx wxt submit --chrome-zip .output/*-chrome.zip
 
       - name: Submit to Firefox Add-ons
-        if: steps.decide.outputs.publish == 'true'
+        if: steps.decide_firefox.outputs.publish == 'true'
         env:
           FIREFOX_EXTENSION_ID: ${{ secrets.FIREFOX_EXTENSION_ID }}
           FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
