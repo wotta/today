@@ -17,6 +17,7 @@ Route::get('/api/sync', [SyncController::class, 'pull'])->name('sync');
 Route::post('/api/uploads', [UploadController::class, 'store'])->name('uploads.store');
 
 Route::post('/api/theme', [SettingsController::class, 'setTheme'])->name('theme.update');
+Route::post('/api/agenda-slot-minutes', [SettingsController::class, 'setAgendaSlotMinutesApi'])->name('agenda-slot-minutes.update');
 Route::get('/api/planner/export', [SettingsController::class, 'exportPlanner'])->name('planner.export');
 
 Route::get('/settings', [SettingsController::class, 'index'])->name('settings');

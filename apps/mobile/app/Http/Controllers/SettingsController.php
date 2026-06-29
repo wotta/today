@@ -85,6 +85,18 @@ class SettingsController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    /** Persist the planner agenda granularity choice (AJAX). */
+    public function setAgendaSlotMinutesApi(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'agendaSlotMinutes' => ['required', 'integer', 'in:60,30,15'],
+        ]);
+
+        $this->settings->setAgendaSlotMinutes((int) $data['agendaSlotMinutes']);
+
+        return response()->json(['ok' => true]);
+    }
+
     /** Persist the planner agenda granularity choice. */
     public function setAgendaSlotMinutes(Request $request): RedirectResponse
     {

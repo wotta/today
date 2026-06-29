@@ -34,17 +34,32 @@
     <section class="mt-6 rounded-lg border border-stone-200 bg-white p-6 shadow-sm dark:border-stone-700 dark:bg-stone-900">
         <h2 class="text-lg font-semibold tracking-tight text-stone-800 dark:text-stone-100">Agenda</h2>
         <p class="mt-1 text-[13px] leading-snug text-stone-500 dark:text-stone-400">Choose how finely UI agents can place planner items on the agenda.</p>
-        <form method="POST" action="{{ route('settings.agenda') }}" class="mt-4">
-            @csrf
-            <div class="inline-flex self-start rounded-full border border-stone-200 bg-stone-50 p-1 dark:border-stone-700 dark:bg-stone-800">
-                @foreach ([60 => '60 min', 30 => '30 min', 15 => '15 min'] as $value => $label)
-                    <label class="cursor-pointer rounded-full px-4 py-1.5 text-[13px] font-medium transition-colors {{ $agendaSlotMinutes === $value ? 'bg-stone-800 text-white dark:bg-stone-100 dark:text-stone-900' : 'text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-100' }}">
-                        <input class="sr-only" type="radio" name="agendaSlotMinutes" value="{{ $value }}" onchange="this.form.submit()" {{ $agendaSlotMinutes === $value ? 'checked' : '' }}>
-                        {{ $label }}
-                    </label>
-                @endforeach
-            </div>
-        </form>
+        <div class="mt-4 inline-flex rounded-full border border-stone-200 bg-stone-50 p-1 dark:border-stone-700 dark:bg-stone-800" id="agenda-slot-picker">
+            @foreach ([60 => '60 min', 30 => '30 min', 15 => '15 min'] as $value => $label)
+                <button type="button"
+                    data-set-agenda="{{ $value }}"
+                    aria-pressed="{{ $agendaSlotMinutes === $value ? 'true' : 'false' }}"
+                    class="rounded-full px-4 py-1.5 text-[13px] font-medium transition-colors text-stone-500 hover:text-stone-800 aria-pressed:bg-stone-800 aria-pressed:text-white dark:text-stone-400 dark:hover:text-stone-100 dark:aria-pressed:bg-stone-100 dark:aria-pressed:text-stone-900">
+                    {{ $label }}
+                </button>
+            @endforeach
+        </div>
+        <script>
+        (function () {
+            const token = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+            document.getElementById('agenda-slot-picker').addEventListener('click', function (e) {
+                const btn = e.target.closest('[data-set-agenda]');
+                if (!btn) return;
+                const minutes = btn.dataset.setAgenda;
+                this.querySelectorAll('[data-set-agenda]').forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
+                fetch('/api/agenda-slot-minutes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token, Accept: 'application/json' },
+                    body: JSON.stringify({ agendaSlotMinutes: Number(minutes) }),
+                }).catch(() => {});
+            });
+        })();
+        </script>
     </section>
 
     {{-- Import / export --}}
