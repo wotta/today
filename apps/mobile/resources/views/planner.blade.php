@@ -135,7 +135,7 @@
         <section class="mt-8">
             <div class="mb-2 flex items-baseline justify-between gap-3">
                 <h2 class="text-base font-semibold tracking-tight text-stone-700 dark:text-stone-200">Agenda</h2>
-                <span class="text-[11px] font-medium text-stone-400 dark:text-stone-500">{{ $agendaGranularity }} min</span>
+                <span class="text-[11px] font-medium text-stone-400 dark:text-stone-500">{{ $agendaSlotMinutes }} min</span>
             </div>
             <ul>
                 <template x-for="slot in slots" :key="slot.key">
