@@ -24,6 +24,18 @@ class SettingRepository
 
     private const AGENDA_SLOT_MINUTES = 'agenda_slot_minutes';
 
+    private const S3_ENDPOINT = 's3_endpoint';
+
+    private const S3_BUCKET = 's3_bucket';
+
+    private const S3_REGION = 's3_region';
+
+    private const S3_ACCESS_KEY_ID = 's3_access_key_id';
+
+    private const S3_SECRET_ACCESS_KEY = 's3_secret_access_key';
+
+    private const S3_PUBLIC_BASE_URL = 's3_public_base_url';
+
     /** @var list<string> */
     private const THEMES = ['light', 'dark', 'auto'];
 
@@ -116,5 +128,82 @@ class SettingRepository
             self::AGENDA_SLOT_MINUTES,
             (string) (in_array($minutes, self::AGENDA_SLOT_MINUTE_VALUES, true) ? $minutes : 60),
         );
+    }
+
+    /** S3/R2 config, or null unless all upload and public serving fields are present. */
+    public function s3Config(): ?array
+    {
+        $endpoint = $this->trimmed(self::S3_ENDPOINT);
+        $bucket = trim($this->trimmed(self::S3_BUCKET), '/');
+        $region = $this->trimmed(self::S3_REGION) ?: 'auto';
+        $accessKeyId = $this->decrypt(self::S3_ACCESS_KEY_ID);
+        $secretAccessKey = $this->decrypt(self::S3_SECRET_ACCESS_KEY);
+        $publicBaseUrl = $this->trimmed(self::S3_PUBLIC_BASE_URL);
+
+        if ($endpoint === '' || $bucket === '' || $accessKeyId === '' || $secretAccessKey === '' || $publicBaseUrl === '') {
+            return null;
+        }
+
+        return [
+            'endpoint' => rtrim($endpoint, '/'),
+            'bucket' => $bucket,
+            'region' => $region,
+            'accessKeyId' => $accessKeyId,
+            'secretAccessKey' => $secretAccessKey,
+            'publicBaseUrl' => rtrim($publicBaseUrl, '/'),
+        ];
+    }
+
+    /** Display values for the Settings form; the secret access key is never returned. */
+    public function s3FormConfig(): array
+    {
+        return [
+            'endpoint' => $this->trimmed(self::S3_ENDPOINT),
+            'bucket' => $this->trimmed(self::S3_BUCKET),
+            'region' => $this->trimmed(self::S3_REGION) ?: 'auto',
+            'accessKeyId' => $this->decrypt(self::S3_ACCESS_KEY_ID),
+            'publicBaseUrl' => $this->trimmed(self::S3_PUBLIC_BASE_URL),
+            'hasSecretAccessKey' => $this->decrypt(self::S3_SECRET_ACCESS_KEY) !== '',
+        ];
+    }
+
+    /**
+     * @param  array{endpoint: string, bucket: string, region?: string, accessKeyId?: string, secretAccessKey?: string, publicBaseUrl: string}  $config
+     */
+    public function setS3Config(array $config): void
+    {
+        $this->set(self::S3_ENDPOINT, rtrim(trim($config['endpoint']), '/'));
+        $this->set(self::S3_BUCKET, trim($config['bucket'], " \t\n\r\0\x0B/"));
+        $this->set(self::S3_REGION, trim((string) ($config['region'] ?? '')) ?: 'auto');
+        $this->set(self::S3_PUBLIC_BASE_URL, rtrim(trim($config['publicBaseUrl']), '/'));
+
+        $accessKeyId = trim((string) ($config['accessKeyId'] ?? ''));
+        if ($accessKeyId !== '') {
+            $this->set(self::S3_ACCESS_KEY_ID, Crypt::encryptString($accessKeyId));
+        }
+
+        $secretAccessKey = trim((string) ($config['secretAccessKey'] ?? ''));
+        if ($secretAccessKey !== '') {
+            $this->set(self::S3_SECRET_ACCESS_KEY, Crypt::encryptString($secretAccessKey));
+        }
+    }
+
+    public function clearS3Config(): void
+    {
+        foreach ([self::S3_ENDPOINT, self::S3_BUCKET, self::S3_REGION, self::S3_ACCESS_KEY_ID, self::S3_SECRET_ACCESS_KEY, self::S3_PUBLIC_BASE_URL] as $key) {
+            $this->forget($key);
+        }
+    }
+
+    private function trimmed(string $key): string
+    {
+        return trim((string) ($this->get($key) ?? ''));
+    }
+
+    private function decrypt(string $key): string
+    {
+        $stored = $this->get($key);
+
+        return $stored ? Crypt::decryptString($stored) : '';
     }
 }
