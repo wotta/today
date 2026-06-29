@@ -294,12 +294,5 @@ export function planner(initial) {
             this.slotNotes = normalizeSlotNotes(entry.slotNotes);
         },
 
-        setSyncStatus(detail) {
-            const state = detail?.state ?? 'idle';
-            this.syncStatus = {
-                state,
-                label: state === 'syncing' ? 'Syncing' : (state === 'error' ? 'Sync offline' : 'Synced'),
-            };
-        },
     };
 }

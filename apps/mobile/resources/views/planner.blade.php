@@ -34,7 +34,6 @@
                 <div class="flex shrink-0 flex-col items-end gap-2">
                     <a href="{{ route('planner', ['date' => $todayDate]) }}"
                        class="rounded-full border border-stone-300 px-3 py-1 text-[12px] font-medium text-stone-500 transition-colors hover:border-stone-500 hover:text-stone-800 dark:border-stone-600 dark:text-stone-400 dark:hover:border-stone-400 dark:hover:text-stone-100 {{ $isToday ? 'invisible' : '' }}">Today</a>
-                    <span class="rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors" :class="syncStatusClass()" x-text="syncMessage"></span>
                     <div class="inline-flex items-center rounded-full border border-stone-200 bg-white/80 p-0.5 shadow-sm dark:border-stone-700 dark:bg-stone-800/80">
                         @foreach (['light' => 'L', 'auto' => 'A', 'dark' => 'D'] as $value => $label)
                             <button type="button" data-set-theme="{{ $value }}" aria-pressed="false"
@@ -56,10 +55,6 @@
                     <span x-text="syncStatus.label"></span>
                 </span>
 
-                <div class="inline-flex items-center gap-0.5 rounded-full border border-stone-200 bg-white/80 p-1 dark:border-stone-700 dark:bg-stone-800/80" aria-label="Theme quick toggle">
-                    <button type="button" data-set-theme="light" aria-pressed="false" class="rounded-full px-2.5 py-1 text-[11px] font-medium text-stone-500 aria-pressed:bg-stone-800 aria-pressed:text-white dark:text-stone-400 dark:aria-pressed:bg-stone-100 dark:aria-pressed:text-stone-900">Light</button>
-                    <button type="button" data-set-theme="dark" aria-pressed="false" class="rounded-full px-2.5 py-1 text-[11px] font-medium text-stone-500 aria-pressed:bg-stone-800 aria-pressed:text-white dark:text-stone-400 dark:aria-pressed:bg-stone-100 dark:aria-pressed:text-stone-900">Dark</button>
-                </div>
             </div>
 
             {{-- Week selector: each day taps to navigate; active = filled pill, today = rose --}}
