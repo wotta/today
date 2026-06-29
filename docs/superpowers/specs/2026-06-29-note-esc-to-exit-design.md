@@ -62,11 +62,13 @@ Two files.
 
 ## Testing
 
-Playwright e2e (extension has baseline coverage in `tests/`):
+Playwright e2e (`e2e/note-esc.spec.ts`). Note: the editor autofocuses on
+mount, so a freshly opened note always needs the blur press first.
 
-1. Open a note, type text, press `Esc` → editor blurs, still on note page.
-   Press `Esc` again → back on planner.
-2. Open a note, press `Esc` without focusing/typing → returns to planner.
+1. Open a note (editor autofocused), press `Esc` → editor blurs, still on note
+   page. Press `Esc` again → back on planner.
+2. Open a note, click a non-editable element (the date heading) to blur the
+   editor, then a single `Esc` → returns to planner.
 
 ## Out of scope (YAGNI)
 
