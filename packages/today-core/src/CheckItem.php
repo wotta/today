@@ -17,8 +17,8 @@ final class CheckItem
         public readonly int $order,
         /** Optional long-form detail shown in the item's view/edit modal. */
         public readonly ?string $description = null,
-        /** Optional agenda hour (6–26) this item is pinned to. Null = unpinned. */
-        public readonly ?int $slot = null,
+        /** Optional agenda slot (6-26, quarter-hour precision). Null = unpinned. */
+        public readonly int|float|null $slot = null,
     ) {
     }
 
@@ -30,7 +30,7 @@ final class CheckItem
             done: (bool) ($data['done'] ?? false),
             order: (int) ($data['order'] ?? 0),
             description: isset($data['description']) ? (string) $data['description'] : null,
-            slot: isset($data['slot']) ? (int) $data['slot'] : null,
+            slot: isset($data['slot']) ? AgendaSlot::normalizeValue($data['slot']) : null,
         );
     }
 

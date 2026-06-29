@@ -157,6 +157,14 @@ class GistClient
                 return true;
             }
         }
+        if (trim($day->note ?? '') !== '') {
+            return true;
+        }
+        foreach ($day->slotNotes as $text) {
+            if (trim($text) !== '') {
+                return true;
+            }
+        }
 
         return false;
     }

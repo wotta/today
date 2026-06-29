@@ -11,17 +11,29 @@
 // "I want it now" case, so we poll the network rarely to spare battery/quota.
 const INTERVAL_MS = 5 * 60 * 1000;
 
+function dispatchSyncStatus(kind, message) {
+    window.dispatchEvent(new CustomEvent('today:sync-status', { detail: { kind, message } }));
+}
+
 /** Run one pull. Resolves once the response is applied (or skipped/failed). */
 export async function syncNow() {
+    dispatchSyncStatus('syncing', 'Syncing...');
     try {
         const res = await fetch('/api/sync', { headers: { Accept: 'application/json' } });
-        if (!res.ok) return;
+        if (!res.ok) {
+            dispatchSyncStatus('error', 'Sync failed');
+            return;
+        }
         const data = await res.json();
         if (Array.isArray(data.changed) && data.changed.length > 0) {
             window.dispatchEvent(new CustomEvent('today:synced', { detail: data }));
+            dispatchSyncStatus('synced', `Synced ${data.changed.length} day${data.changed.length === 1 ? '' : 's'}`);
+        } else {
+            dispatchSyncStatus('synced', 'Up to date');
         }
     } catch (e) {
         // Offline / transient — a later trigger retries.
+        dispatchSyncStatus('error', 'Offline');
     }
 }
 

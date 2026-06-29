@@ -109,7 +109,7 @@ class GistSync
     }
 
     /**
-     * Upsert remote days into the local store, skipping ones already identical.
+     * Merge remote days into the local store, skipping ones already identical.
      *
      * @param  array<string, array>  $remote
      * @return array{changed: list<string>, days: array<string, array>}
@@ -121,15 +121,14 @@ class GistSync
 
         foreach ($remote as $date => $entry) {
             $remoteDay = Day::fromArray($entry + ['date' => (string) $date]);
-            $local = $this->days->load((string) $date);
+            $merged = $this->days->merge($remoteDay);
 
-            if ($remoteDay->toArray() === $local->toArray()) {
+            if ($merged === null) {
                 continue; // unchanged — no write, don't report it
             }
 
-            $this->days->save($remoteDay);
             $changed[] = (string) $date;
-            $payloads[(string) $date] = $remoteDay->toArray();
+            $payloads[(string) $date] = $merged->toArray();
         }
 
         return ['changed' => $changed, 'days' => $payloads];

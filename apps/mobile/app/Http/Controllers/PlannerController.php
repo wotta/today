@@ -5,13 +5,17 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Domain\Planner\DayRepository;
+use App\Domain\Settings\SettingRepository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Today\Core\AgendaSlot;
 
 class PlannerController extends Controller
 {
-    public function __construct(private readonly DayRepository $days) {}
+    public function __construct(
+        private readonly DayRepository $days,
+        private readonly SettingRepository $settings,
+    ) {}
 
     public function show(Request $request)
     {
@@ -24,6 +28,7 @@ class PlannerController extends Controller
             : $today->copy();
 
         $day = $this->days->load($date->toDateString());
+        $agendaGranularity = $this->settings->agendaGranularity();
 
         // Weekday strip (Sun … Sat); each cell jumps to that day in the view week.
         $letters = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -53,22 +58,49 @@ class PlannerController extends Controller
             'todayDate' => $today->toDateString(),
             'isToday' => $date->isSameDay($today),
             'weekdays' => $weekdays,
-            'currentHour' => $this->currentAgendaHour($date, $today),
-            'startHour' => AgendaSlot::START_HOUR,
-            'endHour' => AgendaSlot::END_HOUR,
+            'currentSlot' => $this->currentAgendaSlot($date, $today, $agendaGranularity),
+            'agendaGranularity' => $agendaGranularity,
+            'agendaSlots' => $this->agendaSlots($agendaGranularity),
         ]);
     }
 
-    /** The "now" agenda hour (6–26, mapping 0–2am to 24–26) when viewing today; else null. */
-    private function currentAgendaHour(Carbon $date, Carbon $today): ?int
+    /**
+     * @return list<array{key: int|string, label: string, major: bool, index: int}>
+     */
+    private function agendaSlots(int $granularity): array
+    {
+        $slots = [];
+        $step = max(15, $granularity);
+        $index = 0;
+
+        for ($minutes = AgendaSlot::START_HOUR * 60; $minutes <= AgendaSlot::END_HOUR * 60; $minutes += $step) {
+            $hour = intdiv($minutes, 60);
+            $minute = $minutes % 60;
+            $slot = $hour + ($minute / 60);
+
+            $slots[] = [
+                'key' => AgendaSlot::key($slot),
+                'label' => sprintf('%d:%02d', $hour > 24 ? $hour - 24 : $hour, $minute),
+                'major' => $minute === 0,
+                'index' => $index++,
+            ];
+        }
+
+        return $slots;
+    }
+
+    /** The "now" agenda slot (6–26, mapping 0–2am to 24–26) when viewing today; else null. */
+    private function currentAgendaSlot(Carbon $date, Carbon $today, int $granularity): int|string|null
     {
         if (! $date->isSameDay($today)) {
             return null;
         }
 
-        $h = (int) Carbon::now()->hour;
+        $now = Carbon::now();
+        $h = (int) $now->hour;
         $mapped = $h <= AgendaSlot::END_HOUR - 24 ? $h + 24 : $h;
+        $slot = $mapped + (floor($now->minute / $granularity) * $granularity / 60);
 
-        return $mapped >= AgendaSlot::START_HOUR && $mapped <= AgendaSlot::END_HOUR ? $mapped : null;
+        return AgendaSlot::isValid((string) $slot) ? AgendaSlot::key($slot) : null;
     }
 }

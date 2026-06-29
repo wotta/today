@@ -17,6 +17,9 @@ Route::get('/api/sync', [SyncController::class, 'pull'])->name('sync');
 Route::post('/api/theme', [SettingsController::class, 'setTheme'])->name('theme.update');
 
 Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
+Route::post('/settings/planner/granularity', [SettingsController::class, 'setAgendaGranularity'])->name('settings.planner.granularity');
+Route::get('/settings/planner/export', [SettingsController::class, 'exportPlannerData'])->name('settings.planner.export');
+Route::post('/settings/planner/import', [SettingsController::class, 'importPlannerData'])->name('settings.planner.import');
 Route::post('/settings/gist', [SettingsController::class, 'connectGist'])->name('settings.gist.connect');
 Route::delete('/settings/gist', [SettingsController::class, 'disconnectGist'])->name('settings.gist.disconnect');
 Route::post('/settings/gist/sync', [SettingsController::class, 'syncNow'])->name('settings.gist.sync');

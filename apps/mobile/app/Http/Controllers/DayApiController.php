@@ -24,19 +24,12 @@ class DayApiController extends Controller
     {
         $data = $request->validated();
 
-        // Keep only agenda hours inside the planner range; coerce keys to int.
-        $agenda = [];
-        foreach (($data['agenda'] ?? []) as $hour => $text) {
-            $h = (int) $hour;
-            if ($h >= AgendaSlot::START_HOUR && $h <= AgendaSlot::END_HOUR && trim((string) $text) !== '') {
-                $agenda[$h] = (string) $text;
-            }
-        }
-
         $day = Day::fromArray([
             'date' => $date,
             'checkItems' => $data['checkItems'] ?? [],
-            'agenda' => $agenda,
+            'agenda' => $this->slotMap($data['agenda'] ?? []),
+            'note' => $data['note'] ?? null,
+            'slotNotes' => $this->slotMap($data['slotNotes'] ?? []),
         ]);
 
         $this->days->save($day);
@@ -51,5 +44,19 @@ class DayApiController extends Controller
         }
 
         return response()->json(['ok' => true, 'synced' => $synced]);
+    }
+
+    /** @return array<int|string,string> */
+    private function slotMap(array $map): array
+    {
+        $out = [];
+        foreach ($map as $slot => $text) {
+            $key = AgendaSlot::key($slot);
+            if ($key !== null && trim((string) $text) !== '') {
+                $out[$key] = (string) $text;
+            }
+        }
+
+        return $out;
     }
 }

@@ -69,6 +69,93 @@ it('skips a remote day identical to local', function () {
     expect(app(GistSync::class)->pull()['changed'])->toBe([]);
 });
 
+it('preserves extension fields and fractional slots from remote days', function () {
+    connectGist();
+    Http::fake([
+        'api.github.com/gists/*' => Http::response(
+            ['files' => ['today-data.json' => ['content' => gistBody([
+                '2026-06-22' => [
+                    'date' => '2026-06-22',
+                    'checkItems' => [[
+                        'id' => 'a',
+                        'text' => 'Remote detail',
+                        'done' => false,
+                        'order' => 0,
+                        'description' => 'Remote description',
+                        'slot' => 15.75,
+                    ]],
+                    'agenda' => ['9.5' => 'Remote focus'],
+                    'note' => 'Remote day note',
+                    'slotNotes' => ['9.25' => 'Remote slot note'],
+                ],
+            ])]]],
+            200,
+            ['ETag' => '"v3"'],
+        ),
+    ]);
+
+    app(GistSync::class)->pull();
+
+    $payload = app(DayRepository::class)->load('2026-06-22')->toArray();
+
+    expect($payload['checkItems'][0]['description'])->toBe('Remote description')
+        ->and($payload['checkItems'][0]['slot'])->toBe(15.75)
+        ->and($payload['agenda']['9.5'])->toBe('Remote focus')
+        ->and($payload['note'])->toBe('Remote day note')
+        ->and($payload['slotNotes']['9.25'])->toBe('Remote slot note');
+});
+
+it('merges remote days with existing local fields', function () {
+    connectGist();
+    app(DayRepository::class)->save(Day::fromArray([
+        'date' => '2026-06-22',
+        'checkItems' => [['id' => 'local', 'text' => 'Local task', 'done' => false, 'order' => 0]],
+        'agenda' => ['9' => 'Local focus'],
+        'note' => 'Local note',
+        'slotNotes' => ['9.25' => 'Local slot note'],
+    ]));
+
+    Http::fake([
+        'api.github.com/gists/*' => Http::response(
+            ['files' => ['today-data.json' => ['content' => gistBody([
+                '2026-06-22' => [
+                    'date' => '2026-06-22',
+                    'checkItems' => [['id' => 'remote', 'text' => 'Remote task', 'done' => false, 'order' => 0]],
+                    'agenda' => ['9' => 'Remote focus', '9.5' => 'Remote follow-up'],
+                    'note' => 'Remote note',
+                    'slotNotes' => ['9.25' => 'Remote slot note'],
+                ],
+            ])]]],
+            200,
+            ['ETag' => '"v4"'],
+        ),
+    ]);
+
+    app(GistSync::class)->pull();
+    $payload = app(DayRepository::class)->load('2026-06-22')->toArray();
+
+    expect(array_column($payload['checkItems'], 'id'))->toBe(['local', 'remote'])
+        ->and($payload['agenda']['9'])->toBe("Local focus\n\nRemote focus")
+        ->and($payload['agenda']['9.5'])->toBe('Remote follow-up')
+        ->and($payload['note'])->toBe("Local note\n\nRemote note")
+        ->and($payload['slotNotes']['9.25'])->toBe("Local slot note\n\nRemote slot note");
+});
+
+it('stores note-only days locally as meaningful content', function () {
+    app(DayRepository::class)->save(Day::fromArray([
+        'date' => '2026-06-23',
+        'checkItems' => [],
+        'agenda' => [],
+        'note' => 'Local note',
+        'slotNotes' => ['8.25' => 'Local slot note'],
+    ]));
+
+    $payload = app(DayRepository::class)->load('2026-06-23')->toArray();
+
+    expect($payload['note'])->toBe('Local note')
+        ->and($payload['slotNotes']['8.25'])->toBe('Local slot note');
+});
+
 it('does nothing when not connected', function () {
     Http::fake();
 
