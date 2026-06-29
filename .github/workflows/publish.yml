@@ -1,4 +1,4 @@
-name: Auto-publish to Chrome Web Store
+name: Auto-publish to Chrome Web Store and Firefox Add-ons
 
 on:
   schedule:
@@ -70,10 +70,15 @@ jobs:
         if: steps.decide.outputs.publish == 'true'
         run: bun install --frozen-lockfile
 
-      - name: Build & zip (production)
+      - name: Build & zip Chrome (production)
         if: steps.decide.outputs.publish == 'true'
         working-directory: apps/extension
         run: bun run zip:store
+
+      - name: Build & zip Firefox
+        if: steps.decide.outputs.publish == 'true'
+        working-directory: apps/extension
+        run: bun run zip:firefox
 
       - name: Submit to Chrome Web Store
         if: steps.decide.outputs.publish == 'true'
@@ -85,3 +90,18 @@ jobs:
           CHROME_PUBLISH_TARGET: ${{ secrets.CHROME_PUBLISH_TARGET }}
         working-directory: apps/extension
         run: bunx wxt submit --chrome-zip .output/*-chrome.zip
+
+      - name: Submit to Firefox Add-ons
+        if: steps.decide.outputs.publish == 'true'
+        env:
+          FIREFOX_EXTENSION_ID: ${{ secrets.FIREFOX_EXTENSION_ID }}
+          FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
+          FIREFOX_JWT_SECRET: ${{ secrets.FIREFOX_JWT_SECRET }}
+        working-directory: apps/extension
+        run: |
+          bunx wxt submit \
+            --firefox-zip .output/*-firefox.zip \
+            --firefox-sources-zip .output/*-sources.zip \
+            --firefox-extension-id "$FIREFOX_EXTENSION_ID" \
+            --firefox-jwt-issuer "$FIREFOX_JWT_ISSUER" \
+            --firefox-jwt-secret "$FIREFOX_JWT_SECRET"
