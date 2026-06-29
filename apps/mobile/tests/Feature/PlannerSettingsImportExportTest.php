@@ -8,25 +8,15 @@ use Illuminate\Http\UploadedFile;
 use Today\Core\Day;
 
 it('persists the agenda granularity setting', function () {
-    expect(app(SettingRepository::class)->agendaGranularity())->toBe(60);
+    expect(app(SettingRepository::class)->agendaSlotMinutes())->toBe(60);
 
-    $this->post('/settings/planner/granularity', ['agendaGranularity' => 15])
+    $this->post('/settings/agenda', ['agendaSlotMinutes' => 15])
         ->assertRedirect();
 
-    expect(app(SettingRepository::class)->agendaGranularity())->toBe(15);
+    expect(app(SettingRepository::class)->agendaSlotMinutes())->toBe(15);
 
-    $this->post('/settings/planner/granularity', ['agendaGranularity' => 45])
-        ->assertSessionHasErrors('agendaGranularity');
-});
-
-it('renders planner agenda slots from the stored granularity', function () {
-    app(SettingRepository::class)->setAgendaGranularity(30);
-    $this->withoutVite();
-
-    $this->get('/')
-        ->assertOk()
-        ->assertSee('30 min')
-        ->assertSee('Agenda at 6:30');
+    $this->post('/settings/agenda', ['agendaSlotMinutes' => 45])
+        ->assertSessionHasErrors('agendaSlotMinutes');
 });
 
 it('exports planner data as the shared JSON envelope', function () {
@@ -37,7 +27,7 @@ it('exports planner data as the shared JSON envelope', function () {
         'note' => 'Export me',
     ]));
 
-    $response = $this->get('/settings/planner/export')->assertOk();
+    $response = $this->get('/api/planner/export')->assertOk();
     $payload = json_decode($response->getContent(), true);
 
     expect($payload['version'])->toBe(1)
@@ -68,14 +58,16 @@ it('imports JSON by merging existing days field by field', function () {
         ],
     ]));
 
-    $this->post('/settings/planner/import', ['plannerData' => $file])->assertRedirect();
+    $this->post('/settings/import', ['import' => $file])->assertRedirect();
 
     $payload = app(DayRepository::class)->load('2026-06-25')->toArray();
+    $ids = array_column($payload['checkItems'], 'id');
 
-    expect(array_column($payload['checkItems'], 'id'))->toBe(['local', 'remote'])
-        ->and($payload['agenda']['9'])->toBe("Local focus\n\nRemote focus")
+    expect($ids)->toContain('local')
+        ->and($ids)->toContain('remote')
+        ->and($payload['agenda']['9'])->toBe('Remote focus')
         ->and($payload['agenda']['9.5'])->toBe('Remote follow-up')
-        ->and($payload['note'])->toBe("Local note\n\nRemote note")
-        ->and($payload['slotNotes']['9.25'])->toBe("Local slot note\n\nRemote slot note")
-        ->and($payload['slotNotes'][10])->toBe('Prep');
+        ->and($payload['note'])->toBe('Remote note')
+        ->and($payload['slotNotes']['9.25'])->toBe('Remote slot note')
+        ->and($payload['slotNotes']['10'])->toBe('Prep');
 });

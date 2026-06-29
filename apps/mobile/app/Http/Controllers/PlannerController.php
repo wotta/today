@@ -28,7 +28,6 @@ class PlannerController extends Controller
             : $today->copy();
 
         $day = $this->days->load($date->toDateString());
-        $agendaGranularity = $this->settings->agendaGranularity();
 
         // Weekday strip (Sun … Sat); each cell jumps to that day in the view week.
         $letters = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -63,43 +62,15 @@ class PlannerController extends Controller
         ]);
     }
 
-    /**
-     * @return list<array{key: int|string, label: string, major: bool, index: int}>
-     */
-    private function agendaSlots(int $granularity): array
-    {
-        $slots = [];
-        $step = max(15, $granularity);
-        $index = 0;
-
-        for ($minutes = AgendaSlot::START_HOUR * 60; $minutes <= AgendaSlot::END_HOUR * 60; $minutes += $step) {
-            $hour = intdiv($minutes, 60);
-            $minute = $minutes % 60;
-            $slot = $hour + ($minute / 60);
-
-            $slots[] = [
-                'key' => AgendaSlot::key($slot),
-                'label' => sprintf('%d:%02d', $hour > 24 ? $hour - 24 : $hour, $minute),
-                'major' => $minute === 0,
-                'index' => $index++,
-            ];
-        }
-
-        return $slots;
-    }
-
-    /** The "now" agenda slot (6–26, mapping 0–2am to 24–26) when viewing today; else null. */
-    private function currentAgendaSlot(Carbon $date, Carbon $today, int $granularity): int|string|null
+    /** Current hour (6–26, mapping 0–2am to 24–26) when viewing today; else null. */
+    private function currentAgendaHour(Carbon $date, Carbon $today): ?int
     {
         if (! $date->isSameDay($today)) {
             return null;
         }
 
-        $now = Carbon::now();
-        $h = (int) $now->hour;
-        $mapped = $h <= AgendaSlot::END_HOUR - 24 ? $h + 24 : $h;
-        $slot = $mapped + (floor($now->minute / $granularity) * $granularity / 60);
+        $h = (int) Carbon::now()->hour;
 
-        return AgendaSlot::isValid((string) $slot) ? AgendaSlot::key($slot) : null;
+        return $h <= AgendaSlot::END_HOUR - 24 ? $h + 24 : $h;
     }
 }
