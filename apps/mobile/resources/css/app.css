@@ -49,6 +49,10 @@
     --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
 }
 
+[x-cloak] {
+    display: none !important;
+}
+
 html,
 body {
     height: 100%;
