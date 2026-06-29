@@ -12,6 +12,7 @@ const isStoreBuild = process.argv.some(
 // See https://wxt.dev/api/config.html
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
+  suppressWarnings: { firefoxDataCollection: true },
   manifest: () => {
     return {
       name: 'Today',
