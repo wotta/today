@@ -3,6 +3,8 @@
 // (debounced) PUTs the whole DayEntry back — mirroring the extension's
 // update(mutate) -> putDay(full entry) model.
 
+import Sortable from 'sortablejs';
+
 function uuid() {
     return crypto.randomUUID
         ? crypto.randomUUID()
@@ -79,7 +81,13 @@ export function planner(initial) {
         agendaSlotMinutes: normalizeSlotMinutes(initial.agendaSlotMinutes),
         draft: '',
         openItemId: null,
+        sheetHeight: 400,
+        sheetVisible: false,
+        sheetDragging: false,
+        _sdY: 0,
+        _sdH: 0,
         _timer: null,
+        _closeTimer: null,
         syncStatus: { state: 'idle', label: 'Synced' },
         // True while a local edit is pending/unsaved — a remote sync must not
         // overwrite this panel's fields mid-edit.
@@ -114,7 +122,6 @@ export function planner(initial) {
             const id = uuid();
             this.checkItems.push({ id, text, done: false, order });
             this.draft = '';
-            this.openItemId = id;
             this.persist();
         },
 
@@ -161,12 +168,50 @@ export function planner(initial) {
             this.persist();
         },
 
+        _sheetAvail() {
+            return window.innerHeight - 120; // 120px = native tab bar + home indicator
+        },
+
         openDetails(id) {
+            const avail = this._sheetAvail();
+            this.sheetHeight = Math.round(Math.min(440, avail * 0.65));
             this.openItemId = id;
+            this.sheetVisible = false;
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                this.sheetVisible = true;
+            }));
         },
 
         closeDetails() {
-            this.openItemId = null;
+            this.sheetVisible = false;
+            clearTimeout(this._closeTimer);
+            this._closeTimer = setTimeout(() => { this.openItemId = null; }, 300);
+        },
+
+        startSheetDrag(e) {
+            this.sheetDragging = true;
+            this._sdY = e.touches[0].clientY;
+            this._sdH = this.sheetHeight;
+        },
+
+        moveSheetDrag(e) {
+            if (!this.sheetDragging) return;
+            const dy = this._sdY - e.touches[0].clientY;
+            const max = Math.round(this._sheetAvail() * 0.92);
+            this.sheetHeight = Math.min(Math.max(60, this._sdH + dy), max);
+        },
+
+        endSheetDrag() {
+            if (!this.sheetDragging) return;
+            this.sheetDragging = false;
+            if (this.sheetHeight < 160) {
+                this.closeDetails();
+                return;
+            }
+            const avail = this._sheetAvail();
+            const max = Math.round(avail * 0.92);
+            const mid = Math.round(Math.min(440, avail * 0.65));
+            this.sheetHeight = this.sheetHeight > max * 0.65 ? max : mid;
         },
 
         pinToSlot(id, slot) {
@@ -237,6 +282,24 @@ export function planner(initial) {
 
         slotLabel,
 
+        initDragSort(el) {
+            Sortable.create(el, {
+                handle: '.drag-handle',
+                filter: '.add-row',
+                animation: 150,
+                delay: 200,
+                delayOnTouchOnly: true,
+                onEnd: (evt) => {
+                    const ids = Array.from(evt.to.querySelectorAll('[data-item-id]'))
+                        .map((li) => li.dataset.itemId);
+                    ids.forEach((id, order) => {
+                        const item = this.checkItems.find((i) => i.id === id);
+                        if (item) item.order = order;
+                    });
+                    this.persist();
+                },
+            });
+        },
 
         // Debounced so rapid typing collapses into one write.
         persist() {

@@ -79,9 +79,9 @@
         {{-- Check --}}
         <section>
             <h2 class="mb-2 text-base font-semibold tracking-tight text-stone-700 dark:text-stone-200">Check</h2>
-            <ul>
+            <ul x-init="initDragSort($el)">
                 <template x-for="(item, index) in sortedItems" :key="item.id">
-                    <li class="group flex items-center gap-2.5 border-b border-stone-200 py-2 dark:border-stone-700/70">
+                    <li :data-item-id="item.id" class="flex items-center gap-2.5 border-b border-stone-200 py-2 dark:border-stone-700/70">
                         <button type="button" @click="toggle(item.id)" :aria-pressed="item.done" aria-label="Toggle done"
                             class="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[3px] border text-[11px] leading-none transition-colors"
                             :class="item.done ? 'border-stone-700 bg-stone-700 text-white dark:border-stone-300 dark:bg-stone-300 dark:text-stone-900' : 'border-stone-400 bg-white text-transparent dark:border-stone-500 dark:bg-transparent'">
@@ -92,19 +92,16 @@
                             :class="item.done ? 'text-stone-400 line-through dark:text-stone-500' : 'text-stone-700 dark:text-stone-200'" />
                         <span x-show="item.slot != null" x-text="slotLabel(item.slot)"
                             class="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium tabular-nums text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-200"></span>
-                        <button type="button" aria-label="Move item up" @click="moveItem(item.id, -1)" :disabled="index === 0"
-                            class="shrink-0 px-0.5 text-[13px] text-stone-300 transition-colors enabled:hover:text-stone-600 disabled:opacity-30 dark:text-stone-600 dark:enabled:hover:text-stone-300">↑</button>
-                        <button type="button" aria-label="Move item down" @click="moveItem(item.id, 1)" :disabled="index === sortedItems.length - 1"
-                            class="shrink-0 px-0.5 text-[13px] text-stone-300 transition-colors enabled:hover:text-stone-600 disabled:opacity-30 dark:text-stone-600 dark:enabled:hover:text-stone-300">↓</button>
-                        <button type="button" aria-label="Open item details" @click="openDetails(item.id)"
-                            class="shrink-0 px-1 text-[13px] text-stone-300 transition-colors hover:text-stone-600 dark:text-stone-600 dark:hover:text-stone-300">⋯</button>
-                        <button type="button" aria-label="Delete item" @click="remove(item.id)"
-                            class="shrink-0 px-1 text-stone-300 transition-colors hover:text-stone-600 dark:text-stone-600 dark:hover:text-stone-300">✕</button>
+                        <button type="button" aria-label="Open item details" @touchend.prevent="openDetails(item.id)" @click="openDetails(item.id)"
+                            class="shrink-0 p-2 text-[15px] text-stone-300 transition-colors hover:text-stone-600 dark:text-stone-600 dark:hover:text-stone-300">⋯</button>
+                        <button type="button" aria-label="Delete item" @touchend.prevent="remove(item.id)" @click="remove(item.id)"
+                            class="shrink-0 p-2 text-stone-300 transition-colors hover:text-stone-600 dark:text-stone-600 dark:hover:text-stone-300">✕</button>
+                        <span class="drag-handle shrink-0 cursor-grab px-1 py-2 text-stone-300 active:cursor-grabbing dark:text-stone-600">≡</span>
                     </li>
                 </template>
 
                 {{-- Add row --}}
-                <li class="flex items-center gap-2.5 border-b border-stone-200 py-2 dark:border-stone-700/70">
+                <li class="add-row flex items-center gap-2.5 border-b border-stone-200 py-2 dark:border-stone-700/70">
                     <span aria-hidden class="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[3px] border border-dashed border-stone-300 text-xs leading-none text-stone-300 dark:border-stone-600 dark:text-stone-600">+</span>
                     <input x-model="draft" @keydown.enter="addItem()"
                         :placeholder="checkItems.length ? 'Add a task…' : 'Add your first task…'"
@@ -180,26 +177,44 @@
             </ul>
         </section>
 
-        {{-- Todo detail sheet --}}
-        <div x-cloak x-show="openItem" x-transition.opacity
-            class="fixed inset-0 z-40 flex items-end bg-stone-950/30 px-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
-            @click.self="closeDetails()"
-            @keydown.escape.window="closeDetails()">
-            <section x-show="openItem" x-transition
-                class="w-full rounded-t-2xl border border-stone-200 bg-[#fcfcfb] p-4 shadow-2xl dark:border-stone-700 dark:bg-stone-900">
+        {{-- iOS-style bottom sheet — single root inside x-teleport (Alpine only initialises the first child) --}}
+        <template x-teleport="body">
+        <div @keydown.escape.window="closeDetails()">
+
+        {{-- Dim backdrop --}}
+        <div class="fixed inset-0 z-40 bg-stone-950/40"
+            :style="'opacity:' + (sheetVisible ? 1 : 0) + ';pointer-events:' + (openItem ? 'auto' : 'none') + ';transition:opacity ' + (sheetVisible ? '.3s ease-out' : '.2s ease-in')"
+            @click="closeDetails()"></div>
+
+        {{-- Sheet --}}
+        <div class="fixed left-0 right-0 z-50 overflow-hidden rounded-t-2xl border border-stone-200 bg-[#fcfcfb] shadow-2xl dark:border-stone-700 dark:bg-stone-900"
+            :style="'bottom:120px;height:' + sheetHeight + 'px;pointer-events:' + (openItem ? 'auto' : 'none') + ';transform:translateY(' + (sheetVisible ? 0 : 100) + '%);transition:' + (sheetDragging ? 'none' : (sheetVisible ? 'transform .3s ease-out,height .25s ease-out' : 'transform .2s ease-in'))">
+
+            {{-- Drag handle --}}
+            <div class="flex touch-none select-none justify-center pb-2 pt-3"
+                @touchstart.prevent="startSheetDrag($event)"
+                @touchmove.prevent="moveSheetDrag($event)"
+                @touchend="endSheetDrag()">
+                <div class="h-1 w-10 rounded-full bg-stone-300 dark:bg-stone-600"></div>
+            </div>
+
+            {{-- Scrollable content --}}
+            <div class="overflow-y-auto px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+                :style="`height: calc(${sheetHeight}px - 2.75rem)`">
                 <div class="mb-3 flex items-start justify-between gap-3">
                     <div class="min-w-0">
                         <h2 class="truncate text-base font-semibold text-stone-800 dark:text-stone-100" x-text="openItem?.text"></h2>
                         <p class="text-[12px] text-stone-400 dark:text-stone-500">Todo details</p>
                     </div>
-                    <button type="button" @click="closeDetails()" class="rounded-full px-2 py-1 text-stone-400 hover:text-stone-700 dark:text-stone-500 dark:hover:text-stone-200">Close</button>
+                    <button type="button" @touchend.prevent="closeDetails()" @click="closeDetails()"
+                        class="shrink-0 rounded-full px-2 py-1 text-stone-400 hover:text-stone-700 dark:text-stone-500 dark:hover:text-stone-200">Close</button>
                 </div>
                 <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-stone-400 dark:text-stone-500">Description markdown</label>
                 <textarea :value="openItem?.description ?? ''" @input="editDescription(openItem.id, $event.target.value)"
-                    rows="7"
+                    rows="5"
                     placeholder="Add lightweight markdown details…"
-                    class="mb-4 w-full resize-y rounded-md border border-stone-200 bg-white/70 p-3 text-[14px] leading-6 text-stone-700 outline-none placeholder:text-stone-300 focus:border-stone-400 dark:border-stone-700 dark:bg-stone-950/60 dark:text-stone-200 dark:placeholder:text-stone-600 dark:focus:border-stone-500"></textarea>
-                <div class="grid gap-2">
+                    class="mb-4 w-full resize-none rounded-md border border-stone-200 bg-white/70 p-3 text-[14px] leading-6 text-stone-700 outline-none placeholder:text-stone-300 focus:border-stone-400 dark:border-stone-700 dark:bg-stone-950/60 dark:text-stone-200 dark:placeholder:text-stone-600 dark:focus:border-stone-500"></textarea>
+                <div class="grid gap-2 pb-2">
                     <label class="text-[11px] font-semibold uppercase tracking-wide text-stone-400 dark:text-stone-500">Agenda pin</label>
                     <div class="flex gap-2">
                         <select :value="openItem?.slot ?? ''" @change="$event.target.value === '' ? unpin(openItem.id) : pinToSlot(openItem.id, $event.target.value)"
@@ -209,12 +224,14 @@
                                 <option :value="slot.value" x-text="slot.label"></option>
                             </template>
                         </select>
-                        <button type="button" @click="unpin(openItem.id)"
+                        <button type="button" @touchend.prevent="unpin(openItem.id)" @click="unpin(openItem.id)"
                             class="rounded-md border border-stone-200 px-3 py-2 text-[13px] text-stone-500 dark:border-stone-700 dark:text-stone-400">Unpin</button>
                     </div>
                 </div>
-            </section>
+            </div>
         </div>
+
+        </template>
     </main>
 </div>
 {{-- Bottom navigation + theme control live natively now (NativePHP EDGE bottom
