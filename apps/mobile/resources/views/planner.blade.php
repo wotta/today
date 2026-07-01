@@ -138,10 +138,10 @@
                         ]">
                         <span class="w-14 shrink-0 select-none border-r border-stone-300 py-1 pr-3 text-right text-[11px] tabular-nums dark:border-stone-700"
                             :class="[
-                                slot.isHour ? ((slot.isEvenHour || agendaSlotMinutes >= 30) ? 'text-stone-400 dark:text-stone-500' : 'text-transparent') : 'text-stone-300 dark:text-stone-600',
+                                slot.isHour ? 'text-stone-400 dark:text-stone-500' : 'text-stone-300 dark:text-stone-600',
                                 isCurrentSlot(slot.value) ? '!text-amber-600 font-semibold dark:!text-amber-400' : ''
                             ]"
-                            x-text="slot.isHour ? ((slot.isEvenHour || agendaSlotMinutes >= 30) ? slot.label : '') : slot.minuteLabel"></span>
+                            x-text="slot.isHour ? slot.label : slot.minuteLabel"></span>
                         <div class="flex min-h-[34px] min-w-0 flex-1 flex-col py-1">
                             <div class="flex items-center">
                                 <input :value="agenda[slot.key] ?? ''" @input="setAgenda(slot.value, $event.target.value)"
