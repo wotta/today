@@ -94,6 +94,7 @@ export function planner(initial) {
         dirty: false,
 
         get slots() {
+            const every = this.agendaSlotMinutes / 15; // 60→4, 30→2, 15→1
             return Array.from({ length: SLOT_COUNT }, (_, index) => {
                 const value = Number(slotKey(START_SLOT + index * SLOT_STEP));
                 return {
@@ -104,7 +105,7 @@ export function planner(initial) {
                     isHour: value % 1 === 0,
                     isEvenHour: value % 2 === 0,
                 };
-            });
+            }).filter((_, index) => index % every === 0);
         },
 
         get sortedItems() {
