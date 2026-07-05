@@ -173,6 +173,12 @@ export function planner(initial) {
             return window.innerHeight - 120; // 120px = native tab bar + home indicator
         },
 
+        // Full detent: everything above the tab bar minus a small top gap so the
+        // rounded corners still read as a sheet (iOS large-detent look).
+        _sheetMax() {
+            return this._sheetAvail() - 16;
+        },
+
         openDetails(id) {
             const avail = this._sheetAvail();
             this.sheetHeight = Math.round(Math.min(440, avail * 0.65));
@@ -198,8 +204,7 @@ export function planner(initial) {
         moveSheetDrag(e) {
             if (!this.sheetDragging) return;
             const dy = this._sdY - e.touches[0].clientY;
-            const max = Math.round(this._sheetAvail() * 0.92);
-            this.sheetHeight = Math.min(Math.max(60, this._sdH + dy), max);
+            this.sheetHeight = Math.min(Math.max(60, this._sdH + dy), this._sheetMax());
         },
 
         endSheetDrag() {
@@ -209,10 +214,11 @@ export function planner(initial) {
                 this.closeDetails();
                 return;
             }
-            const avail = this._sheetAvail();
-            const max = Math.round(avail * 0.92);
-            const mid = Math.round(Math.min(440, avail * 0.65));
-            this.sheetHeight = this.sheetHeight > max * 0.65 ? max : mid;
+            const max = this._sheetMax();
+            const mid = Math.round(Math.min(440, this._sheetAvail() * 0.65));
+            // Snap to whichever detent is nearer, so a small nudge from mid
+            // doesn't jump straight to full.
+            this.sheetHeight = (max - this.sheetHeight) < (this.sheetHeight - mid) ? max : mid;
         },
 
         pinToSlot(id, slot) {
