@@ -188,7 +188,7 @@
 
         {{-- Sheet --}}
         <div class="fixed left-0 right-0 z-50 overflow-hidden rounded-t-2xl border border-stone-200 bg-[#fcfcfb] shadow-2xl dark:border-stone-700 dark:bg-stone-900"
-            :style="'bottom:120px;height:' + sheetHeight + 'px;pointer-events:' + (openItem ? 'auto' : 'none') + ';transform:translateY(' + (sheetVisible ? 0 : 100) + '%);transition:' + (sheetDragging ? 'none' : (sheetVisible ? 'transform .3s ease-out,height .25s ease-out' : 'transform .2s ease-in'))">
+            :style="'bottom:120px;height:' + sheetHeight + 'px;pointer-events:' + (openItem ? 'auto' : 'none') + ';transform:translateY(' + (sheetVisible ? '0' : 'calc(100% + 120px)') + ');transition:' + (sheetDragging ? 'none' : (sheetVisible ? 'transform .3s ease-out,height .25s ease-out' : 'transform .2s ease-in'))">
 
             {{-- Drag handle --}}
             <div class="flex touch-none select-none justify-center pb-2 pt-3"
