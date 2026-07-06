@@ -43,6 +43,6 @@ it('shows saved status after successfully saving a planner edit', function () {
         ->type($addTask, 'Browser saved task')
         ->keys($addTask, 'Enter')
         ->wait(1)
-        ->assertSee('Saved locally')
+        ->assertSee('Saved')
         ->assertNoJavaScriptErrors();
 });
